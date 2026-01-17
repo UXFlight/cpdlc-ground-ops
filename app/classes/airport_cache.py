@@ -8,7 +8,9 @@ class AirportCache:
     def __init__(self, cache_dir: Path = Path(__file__).resolve().parent.parent / "data"):
         self.cache_dir = cache_dir
         self.available_icaos: Set[str] = self._scan_cache()
-        print(f"[AirportCache] Available ICAOs: {self.available_icaos}")
+        print("[AirportCache] Available ICAOs:")
+        for icao in self.available_icaos:
+            print(f" - {icao}")
 
     def _scan_cache(self) -> Set[str]:
         if not self.cache_dir.exists():
