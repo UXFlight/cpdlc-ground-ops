@@ -1,9 +1,4 @@
-import json
-from pathlib import Path
 from app.utils.types import StepStatus
-
-with open(Path(__file__).resolve().parent.parent.parent / "shared" / "msg_status.json") as f:
-    MSG_STATUS = json.load(f)
 
 INGESCAPE_OUTPUTS = {
     "load",
