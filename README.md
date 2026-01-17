@@ -171,8 +171,3 @@ The logging system is a hidden festure [a true gem] that the client will never p
     └── index.html
 
 32 directories, 76 files
-```
-
-## + if you want to print a tree of your project without unnecessary files the command is:
-   ```bash
-   ```
