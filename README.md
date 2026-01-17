@@ -1,6 +1,6 @@
 # Controller-pilot data link communications (CPDLC) - Ground Ops
 
-Research projet @PolyMTL made by @simy46_. 
+Research projet @ Polytechnique Montreal made by Missipsa M'Hamed Annane, Srishti Rawal and Philippe Doyon-Poulin. 
 
 This project is meant to simplify and strengthen the communication between the ATC and the Pilot. We used the Global Operational Data Link Document ([GOLD](https://www2023.icao.int/sam/documents/datalink11/gold%201st%20edition_14-jun-10.pdf)), by following the current communication protocol. It is heavily focused on ground operations. It can handle multiple pilots connection (having each one their context), and multiple ATCs, that have a shared context (imagine sharing a doc and both working on it).
 
@@ -20,59 +20,7 @@ ATC Front-End : Angular/ TS/ SCSS
 
 Backend : Flask server with HTTP and WS integration for real-time communication.
 
-Ingescape : To communicate with our flight simulator X-Plane, so we can really simulate the usage of the app on a flight. It works with WS, but they abstract the coding out of it.
-
-## Installation and Execution on Linux
-**You would need Python 3.8+ and pip, and npm**
-
-1. **Clone repo**
-
-   ```bash
-   git clone https://github.com/UXFlight/cpdlc-flask-app.git
-   cd cpdlc-flask-app
-   ```
-#
-2. **Create Venv**
-
-   ```bash
-   python3 -m venv venv
-   cd venv
-   source venv/bin/activate
-   ```
-
-3. **Install dependencies listed on requirements.txt**
-
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-4. **Run the app on main.py**
-
-   ```bash
-   python3 main.py
-   ```
-
-   The pilot interface is available on [http://127.0.0.1:5321/](http://127.0.0.1:5321/)
-
-5. **Change directory on /client**
-
-  ```bash
-   cd client
-   ```
-
-6. **Install dependencies listed on package.json**
-
-  ```bash
-   npm install
-   ```
-
-7. **Start client side server**
-
-  ```bash
-   npm start
-   ```
-
-The ATC interface is available on [http://127.0.0.1:4200/](http://127.0.0.1:4200/)
+Ingescape : To communicate with our flight simulator X-Plane, so we can really simulate the usage of the app on a flight. It works with WS, but they abstract the coding out of it. It is only needed to simulate the whole environment, but can work without it.
 
 Enjoy !
 
