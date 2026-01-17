@@ -1,4 +1,4 @@
-# Controller–pilot data link communications (CPDLC) - Ground Ops
+# Controller-pilot data link communications (CPDLC) - Ground Ops
 
 Research projet @PolyMTL made by @simy46_. 
 
