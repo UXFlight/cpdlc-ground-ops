@@ -40,14 +40,30 @@ export class AirportMapService {
   private canvasWidth = 0;
   private canvasHeight = 0;
 
-  // zoom
+  // zoom/pan/rotation
   zoomFactor = 1;
   private panOffset = { x: 0, y: 0 };
+  private rotationAngle = 0; // radians
+
+  private readonly MIN_ZOOM = 0.2;
+  private readonly MAX_ZOOM = 20;
+  private readonly PAN_SENSITIVITY = 1;
+  private readonly ZOOM_SENSITIVITY = 0.0016;
+  private readonly ZOOM_SMOOTHING = 0.2;
+
+  private zoomTarget = 1;
+  private panTarget = { x: 0, y: 0 };
+  private zoomAnimationId = 0;
+  private prefersReducedMotion = false;
 
   constructor(
     // private readonly communicationService: CommunicationService,
     private readonly socketClientService: ClientSocketService
   ) {
+    this.prefersReducedMotion =
+      typeof window !== 'undefined' &&
+      window.matchMedia &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     this.listenToSocketEvents();
   }
 
@@ -125,22 +141,30 @@ export class AirportMapService {
 
     const project = (coord: [number, number]): [number, number] => {
       const [x0, y0] = rawProject(coord);
-      return [
-        x0 * this.zoomFactor + this.panOffset.x,
-        y0 * this.zoomFactor + this.panOffset.y
-      ];
+      const scaledX = x0 * this.zoomFactor;
+      const scaledY = y0 * this.zoomFactor;
+      const [rotX, rotY] = this.rotatePoint(
+        scaledX,
+        scaledY,
+        this.rotationAngle,
+        this.canvasWidth / 2,
+        this.canvasHeight / 2
+      );
+
+      return [rotX + this.panOffset.x, rotY + this.panOffset.y];
     };
 
     return {
       project,
       showLabels: this.showLabelsSubject.value,
-      zoomLevel: this.zoomFactor
+      zoomLevel: this.zoomFactor,
+      rotation: this.rotationAngle
     };
   }
 
   // external controls for zoom/pan
   setZoomAndPan(zoom: number, pan: { x: number; y: number }): void {
-    this.zoomFactor = zoom;
+    this.zoomFactor = this.clampZoom(zoom);
     this.panOffset = { ...pan };
     this.renderSubject.next(true);
   }
@@ -156,10 +180,18 @@ export class AirportMapService {
     const [x0, y0] = this.rawProject(coord);
     const canvasCenterX = this.canvasWidth / 3; // slighty to the left, this.canvasWidth/2 to center 
     const canvasCenterY = this.canvasHeight / 2;
-  
+
+    const [rotX, rotY] = this.rotatePoint(
+      x0 * zoom,
+      y0 * zoom,
+      this.rotationAngle,
+      this.canvasWidth / 2,
+      this.canvasHeight / 2
+    );
+
     return {
-      x: canvasCenterX - x0 * zoom,
-      y: canvasCenterY - y0 * zoom
+      x: canvasCenterX - rotX,
+      y: canvasCenterY - rotY
     };
   }
 
@@ -192,6 +224,11 @@ export class AirportMapService {
   
   
   animateZoomAndPan(targetZoom: number, targetPan: { x: number; y: number }, duration = 300): void {
+    if (this.prefersReducedMotion) {
+      this.setZoomAndPan(targetZoom, targetPan);
+      return;
+    }
+
     const startZoom = this.zoomFactor;
     const startPan = { ...this.panOffset };
 
@@ -224,6 +261,7 @@ export class AirportMapService {
   resetZoomAndPan(): void {
     this.zoomFactor = 1;
     this.panOffset = { x: 0, y: 0 };
+    this.rotationAngle = 0;
     this.animateZoomAndPan(this.zoomFactor, this.panOffset, 300);
     this.renderSubject.next(true);
   }
@@ -236,21 +274,28 @@ export class AirportMapService {
   }
 
   zoomResetted(): boolean {
-    return this.zoomFactor !== 1 && this.panOffset.x !== 0 && this.panOffset.y !== 0;
+    return this.zoomFactor !== 1 ||
+      this.panOffset.x !== 0 ||
+      this.panOffset.y !== 0 ||
+      this.rotationAngle !== 0;
   }
 
   zoomFromWheel(deltaY: number, center: [number, number]): void {
-    const zoomChange = deltaY < 0 ? 1.1 : 1 / 1.1;
-    const newZoom = Math.min(20, Math.max(0.1, this.zoomFactor * zoomChange));
-    const factor = newZoom / this.zoomFactor;
-  
-    const [cx, cy] = center;
-    this.panOffset.x = cx - (cx - this.panOffset.x) * factor;
-    this.panOffset.y = cy - (cy - this.panOffset.y) * factor;
-  
-    this.zoomFactor = newZoom;
+    const zoomChange = Math.exp(-deltaY * this.ZOOM_SENSITIVITY);
+    const newZoom = this.clampZoom(this.zoomFactor * zoomChange);
+    const newPan = this.computePanForZoom(newZoom, center);
 
-    this.renderSubject.next(true);
+    this.zoomTarget = newZoom;
+    this.panTarget = newPan;
+
+    if (this.prefersReducedMotion) {
+      this.setZoomAndPan(this.zoomTarget, this.panTarget);
+      return;
+    }
+
+    if (!this.zoomAnimationId) {
+      this.zoomAnimationId = requestAnimationFrame(this.animateZoomStep);
+    }
   }
 
   selectPlane(plane: PilotPublicView | null): void {
@@ -262,14 +307,107 @@ export class AirportMapService {
   }
   // event
   applyPan(dx: number, dy: number): void {
-    const factor = 1.25 / this.zoomFactor;
-  
-    this.panOffset.x += dx * factor;
-    this.panOffset.y += dy * factor;
+    this.panOffset.x += dx * this.PAN_SENSITIVITY;
+    this.panOffset.y += dy * this.PAN_SENSITIVITY;
   }
 
   getBaseScale(): number {
     return this.baseScale || 1; // fallback pour éviter division par 0
+  }
+
+  rotateBy(deltaRadians: number): void {
+    this.setRotation(this.rotationAngle + deltaRadians);
+  }
+
+  setRotation(angleRadians: number): void {
+    const normalized = Math.atan2(Math.sin(angleRadians), Math.cos(angleRadians));
+    this.rotationAngle = normalized;
+    this.renderSubject.next(true);
+  }
+
+  zoomByFactor(factor: number, center: [number, number]): void {
+    const newZoom = this.clampZoom(this.zoomFactor * factor);
+    const newPan = this.computePanForZoom(newZoom, center);
+    this.zoomTarget = newZoom;
+    this.panTarget = newPan;
+
+    if (this.prefersReducedMotion) {
+      this.setZoomAndPan(this.zoomTarget, this.panTarget);
+      return;
+    }
+
+    if (!this.zoomAnimationId) {
+      this.zoomAnimationId = requestAnimationFrame(this.animateZoomStep);
+    }
+  }
+
+  private computePanForZoom(newZoom: number, center: [number, number]): { x: number; y: number } {
+    const [cx, cy] = center;
+    const currentZoom = this.zoomFactor || 1;
+    const unpannedX = cx - this.panOffset.x;
+    const unpannedY = cy - this.panOffset.y;
+    const [unrotX, unrotY] = this.rotatePoint(
+      unpannedX,
+      unpannedY,
+      -this.rotationAngle,
+      this.canvasWidth / 2,
+      this.canvasHeight / 2
+    );
+    const baseX = unrotX / currentZoom;
+    const baseY = unrotY / currentZoom;
+    const [rotX, rotY] = this.rotatePoint(
+      baseX * newZoom,
+      baseY * newZoom,
+      this.rotationAngle,
+      this.canvasWidth / 2,
+      this.canvasHeight / 2
+    );
+
+    return {
+      x: cx - rotX,
+      y: cy - rotY
+    };
+  }
+
+  private clampZoom(zoom: number): number {
+    return Math.min(this.MAX_ZOOM, Math.max(this.MIN_ZOOM, zoom));
+  }
+
+  private rotatePoint(
+    x: number,
+    y: number,
+    angle: number,
+    cx: number,
+    cy: number
+  ): [number, number] {
+    const dx = x - cx;
+    const dy = y - cy;
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+    return [cx + dx * cos - dy * sin, cy + dx * sin + dy * cos];
+  }
+
+  private animateZoomStep = () => {
+    const zoomDelta = this.zoomTarget - this.zoomFactor;
+    const panDeltaX = this.panTarget.x - this.panOffset.x;
+    const panDeltaY = this.panTarget.y - this.panOffset.y;
+    const closeEnough =
+      Math.abs(zoomDelta) < 0.001 &&
+      Math.abs(panDeltaX) < 0.25 &&
+      Math.abs(panDeltaY) < 0.25;
+
+    if (closeEnough) {
+      this.setZoomAndPan(this.zoomTarget, this.panTarget);
+      this.zoomAnimationId = 0;
+      return;
+    }
+
+    this.zoomFactor += zoomDelta * this.ZOOM_SMOOTHING;
+    this.panOffset.x += panDeltaX * this.ZOOM_SMOOTHING;
+    this.panOffset.y += panDeltaY * this.ZOOM_SMOOTHING;
+    this.renderSubject.next(true);
+
+    this.zoomAnimationId = requestAnimationFrame(this.animateZoomStep);
   }
 
   // === Socket events ===

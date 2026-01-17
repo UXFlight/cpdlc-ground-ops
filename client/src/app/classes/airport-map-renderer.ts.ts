@@ -8,6 +8,7 @@ export interface MapRenderOptions {
   project: (coord: LonLat) => [number, number];
   showLabels: boolean;
   zoomLevel?: number;
+  rotation?: number;
 }
 
 export class AirportMapRenderer {
@@ -50,10 +51,11 @@ export class AirportMapRenderer {
       const [x, y] = options.project(pilot.plane.current_pos.coord);
       const heading = pilot.plane.current_heading ?? 0;
       const zoom = options.zoomLevel ?? 1;
+      const mapRotation = options.rotation ?? 0;
   
       this.ctx.save();
       this.ctx.translate(x, y);
-      this.ctx.rotate((heading * Math.PI) / 180);
+      this.ctx.rotate(mapRotation + (heading * Math.PI) / 180);
   
       const baseSize = 35;
       const scaleFactor = 1 + (zoom - 1) * 0.2;
@@ -310,7 +312,7 @@ export class AirportMapRenderer {
   private drawLinePath(
     points: [number, number][],
     color: string,
-    feature: { name?: string; status?: string }, // plus générique
+    feature: { name?: string; status?: string },
     zoom: number
   ): void {
     const { ctx } = this;
@@ -402,7 +404,7 @@ export class AirportMapRenderer {
   }
 
      
-  // --- Shared private logic ---
+  // Shared private logic
   private drawLine(
     segments: { start: LonLat; end: LonLat; name?: string }[],
     options: MapRenderOptions,

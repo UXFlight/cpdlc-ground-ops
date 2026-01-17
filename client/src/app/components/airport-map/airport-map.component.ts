@@ -36,9 +36,18 @@ export class AirportMapComponent implements OnInit, AfterViewInit, OnDestroy {
   airportMap: AirportMapData | null = null;
 
   private isDragging = false;
-  private lastMouseX = 0;
-  private lastMouseY = 0;
+  private activePointerId: number | null = null;
+  private lastPointerX = 0;
+  private lastPointerY = 0;
   private dragMoved = false;
+  private pendingPan = { x: 0, y: 0 };
+  private panAnimationId = 0;
+  private renderAnimationId = 0;
+
+  private readonly DRAG_THRESHOLD_PX = 4;
+  private readonly KEY_PAN_STEP = 40;
+  private readonly KEY_ZOOM_STEP = 1.12;
+  private readonly ROTATION_STEP = Math.PI / 18;
 
   constructor(
     private readonly mainpageService: MainPageService,
@@ -55,8 +64,17 @@ export class AirportMapComponent implements OnInit, AfterViewInit, OnDestroy {
     this.ctx = canvas.getContext('2d')!;
     this.renderer = new AirportMapRenderer(this.ctx, canvas);
     this.canvasRef.nativeElement.addEventListener('wheel', this.onCanvasWheel, { passive: false });
+    this.canvasRef.nativeElement.addEventListener('pointerdown', this.onCanvasPointerDown);
+    this.canvasRef.nativeElement.addEventListener('pointermove', this.onCanvasPointerMove);
+    this.canvasRef.nativeElement.addEventListener('pointerup', this.onCanvasPointerUp);
+    this.canvasRef.nativeElement.addEventListener('pointercancel', this.onCanvasPointerUp);
+    this.canvasRef.nativeElement.addEventListener('keydown', this.onCanvasKeyDown);
+    canvas.tabIndex = 0;
+    canvas.setAttribute('role', 'application');
+    canvas.setAttribute('aria-label', 'Airport map. Use mouse, touch, or keyboard to pan, zoom, and rotate.');
+    canvas.style.touchAction = 'none';
     this.resizeCanvas();
-    canvas.addEventListener('click', this.onCanvasClick.bind(this));
+    canvas.addEventListener('click', this.onCanvasClick);
   }
   
   ngOnDestroy(): void {
@@ -64,6 +82,18 @@ export class AirportMapComponent implements OnInit, AfterViewInit, OnDestroy {
     this.airportMapSubscription?.unsubscribe();
     this.renderSubject?.unsubscribe();
     this.showLabelsSubscription?.unsubscribe();
+    const canvas = this.canvasRef?.nativeElement;
+    if (canvas) {
+      canvas.removeEventListener('wheel', this.onCanvasWheel);
+      canvas.removeEventListener('pointerdown', this.onCanvasPointerDown);
+      canvas.removeEventListener('pointermove', this.onCanvasPointerMove);
+      canvas.removeEventListener('pointerup', this.onCanvasPointerUp);
+      canvas.removeEventListener('pointercancel', this.onCanvasPointerUp);
+      canvas.removeEventListener('keydown', this.onCanvasKeyDown);
+      canvas.removeEventListener('click', this.onCanvasClick);
+    }
+    if (this.panAnimationId) cancelAnimationFrame(this.panAnimationId);
+    if (this.renderAnimationId) cancelAnimationFrame(this.renderAnimationId);
     // this.renderer?.stopPingLoop();
   }
 
@@ -74,27 +104,14 @@ export class AirportMapComponent implements OnInit, AfterViewInit, OnDestroy {
   @HostListener('window:resize')
   onWindowResize() {
     this.resizeCanvas();
-    this.render();
+    this.scheduleRender();
   }
 
   // never settle for less UX, this event is only used for the cursor style. 
   @HostListener('mousemove', ['$event'])
   onMouseMove(event: MouseEvent): void {
     const canvas = this.canvasRef.nativeElement;
-  
-    if (this.isDragging) {
-      const dx = event.clientX - this.lastMouseX;
-      const dy = event.clientY - this.lastMouseY;
-  
-      if (Math.abs(dx) > 2 || Math.abs(dy) > 2) this.dragMoved = true;
-  
-      this.lastMouseX = event.clientX;
-      this.lastMouseY = event.clientY;
-  
-      this.airportMapService.applyPan(dx, dy);
-      this.render();
-      return;
-    }
+    if (this.isDragging) return;
   
     const rect = canvas.getBoundingClientRect();
     const x = event.clientX - rect.left;
@@ -112,37 +129,19 @@ export class AirportMapComponent implements OnInit, AfterViewInit, OnDestroy {
   
     canvas.style.cursor = hovered ? 'pointer' : 'default';
   }
-  
-  
-  @HostListener('mousedown', ['$event'])
-  onMouseDown(event: MouseEvent): void {
-    if (event.button !== 0) return;
-    this.isDragging = true;
-    this.dragMoved = false;
-    this.lastMouseX = event.clientX;
-    this.lastMouseY = event.clientY;
-    this.canvasRef.nativeElement.style.cursor = 'grabbing';
-  }
-  
-  @HostListener('mouseup')
-  @HostListener('mouseleave')
-  onMouseUp(): void {
-    this.isDragging = false;
-    this.canvasRef.nativeElement.style.cursor = 'default';
-  }
 
   private resizeCanvas(): void {
     const canvas = this.canvasRef.nativeElement;
     canvas.width = canvas.clientWidth;
     canvas.height = canvas.clientHeight;
     this.airportMapService.updateCanvasSize(canvas.width, canvas.height);
-    this.render();
+    this.scheduleRender();
   }
 
   private configSubscriptions(): void {
     this.pilotSubscription = this.mainpageService.pilotsPreviews$.subscribe(pilots => {
       this.pilots = pilots;
-      this.render();
+      this.scheduleRender();
     });
   
     this.airportMapSubscription = this.airportMapService.airportMap$.subscribe(map => {
@@ -152,16 +151,16 @@ export class AirportMapComponent implements OnInit, AfterViewInit, OnDestroy {
       const canvas = this.canvasRef.nativeElement;
       this.airportMapService.updateCanvasSize(canvas.width, canvas.height);
   
-      this.render();
+      this.scheduleRender();
     });
 
     this.renderSubject = this.airportMapService.render$.subscribe(render => {
-      if (render) this.render();
+      if (render) this.scheduleRender();
     });
 
     this.showLabelsSubscription = this.airportMapService.showLabels$.subscribe(show => {
       this.showLabels = show;
-      this.render();
+      this.scheduleRender();
     });
   }
 
@@ -183,6 +182,13 @@ export class AirportMapComponent implements OnInit, AfterViewInit, OnDestroy {
     this.renderer.drawPilots(this.pilots, options);
   }
   
+  private scheduleRender(): void {
+    if (this.renderAnimationId) return;
+    this.renderAnimationId = requestAnimationFrame(() => {
+      this.renderAnimationId = 0;
+      this.render();
+    });
+  }
 
   onResetMap(): void {
     this.airportMapService.resetZoom();
@@ -200,11 +206,17 @@ export class AirportMapComponent implements OnInit, AfterViewInit, OnDestroy {
     const rect = canvas.getBoundingClientRect();
     const mouseX = evt.clientX - rect.left;
     const mouseY = evt.clientY - rect.top;
+    const delta =
+      evt.deltaMode === WheelEvent.DOM_DELTA_LINE
+        ? evt.deltaY * 16
+        : evt.deltaMode === WheelEvent.DOM_DELTA_PAGE
+          ? evt.deltaY * canvas.clientHeight
+          : evt.deltaY;
   
-    this.airportMapService.zoomFromWheel(evt.deltaY, [mouseX, mouseY]);
+    this.airportMapService.zoomFromWheel(delta, [mouseX, mouseY]);
   };
 
-  onCanvasClick(event: MouseEvent): void {
+  private onCanvasClick = (event: MouseEvent): void => {
     if (this.dragMoved) return; // if we moved!
     const canvas = this.canvasRef.nativeElement;
     const rect = canvas.getBoundingClientRect();
@@ -227,7 +239,114 @@ export class AirportMapComponent implements OnInit, AfterViewInit, OnDestroy {
         return this.airportMapService.focusOnPilot(pilot, ZOOM);
       }
     }
-    this.airportMapService.selectPlane(null);
+    return;
+  };
+
+  private onCanvasPointerDown = (event: PointerEvent): void => {
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
+    this.isDragging = true;
+    this.dragMoved = false;
+    this.activePointerId = event.pointerId;
+    this.lastPointerX = event.clientX;
+    this.lastPointerY = event.clientY;
+    this.canvasRef.nativeElement.setPointerCapture(event.pointerId);
+    this.canvasRef.nativeElement.style.cursor = 'grabbing';
+    this.canvasRef.nativeElement.focus({ preventScroll: true });
+    if (event.pointerType !== 'mouse') event.preventDefault();
+  };
+
+  private onCanvasPointerMove = (event: PointerEvent): void => {
+    if (!this.isDragging || event.pointerId !== this.activePointerId) return;
+    const dx = event.clientX - this.lastPointerX;
+    const dy = event.clientY - this.lastPointerY;
+    if (Math.abs(dx) >= this.DRAG_THRESHOLD_PX || Math.abs(dy) >= this.DRAG_THRESHOLD_PX) {
+      this.dragMoved = true;
+    }
+    this.lastPointerX = event.clientX;
+    this.lastPointerY = event.clientY;
+    this.queuePan(dx, dy);
+    if (event.pointerType !== 'mouse') event.preventDefault();
+  };
+
+  private onCanvasPointerUp = (event: PointerEvent): void => {
+    if (event.pointerId !== this.activePointerId) return;
+    this.isDragging = false;
+    this.activePointerId = null;
+    this.canvasRef.nativeElement.style.cursor = 'default';
+    if (this.canvasRef.nativeElement.hasPointerCapture(event.pointerId)) {
+      this.canvasRef.nativeElement.releasePointerCapture(event.pointerId);
+    }
+  };
+
+  private queuePan(dx: number, dy: number): void {
+    this.pendingPan.x += dx;
+    this.pendingPan.y += dy;
+    if (this.panAnimationId) return;
+
+    this.panAnimationId = requestAnimationFrame(() => {
+      const { x, y } = this.pendingPan;
+      this.pendingPan = { x: 0, y: 0 };
+      this.panAnimationId = 0;
+      if (x !== 0 || y !== 0) {
+        this.airportMapService.applyPan(x, y);
+        this.scheduleRender();
+      }
+    });
+  }
+
+  private onCanvasKeyDown = (event: KeyboardEvent): void => {
+    if (this.isEditableElement(event.target)) return;
+    const key = event.key.toLowerCase();
+    const canvas = this.canvasRef.nativeElement;
+    const center: [number, number] = [canvas.clientWidth / 2, canvas.clientHeight / 2];
+
+    switch (key) {
+      case 'arrowup':
+        this.airportMapService.applyPan(0, -this.KEY_PAN_STEP);
+        this.scheduleRender();
+        event.preventDefault();
+        break;
+      case 'arrowdown':
+        this.airportMapService.applyPan(0, this.KEY_PAN_STEP);
+        this.scheduleRender();
+        event.preventDefault();
+        break;
+      case 'arrowleft':
+        this.airportMapService.applyPan(-this.KEY_PAN_STEP, 0);
+        this.scheduleRender();
+        event.preventDefault();
+        break;
+      case 'arrowright':
+        this.airportMapService.applyPan(this.KEY_PAN_STEP, 0);
+        this.scheduleRender();
+        event.preventDefault();
+        break;
+      case '+':
+      case '=':
+        this.airportMapService.zoomByFactor(this.KEY_ZOOM_STEP, center);
+        event.preventDefault();
+        break;
+      case '-':
+      case '_':
+        this.airportMapService.zoomByFactor(1 / this.KEY_ZOOM_STEP, center);
+        event.preventDefault();
+        break;
+      case 'q':
+        this.airportMapService.rotateBy(-this.ROTATION_STEP);
+        event.preventDefault();
+        break;
+      case 'e':
+        this.airportMapService.rotateBy(this.ROTATION_STEP);
+        event.preventDefault();
+        break;
+    }
+  };
+
+  private isEditableElement(target: EventTarget | null): boolean {
+    const element = target as HTMLElement | null;
+    if (!element) return false;
+    const tag = element.tagName?.toLowerCase();
+    return tag === 'input' || tag === 'textarea' || element.isContentEditable;
   }
   
 }
