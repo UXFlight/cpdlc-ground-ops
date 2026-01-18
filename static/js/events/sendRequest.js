@@ -4,6 +4,7 @@ import { updateStep } from '../state/state.js';
 import { MSG_STATUS } from '../consts/status.js';
 import { emitRequest } from '../socket/socket-emits.js';
 import { getRequestPayload } from "../utils/requestPayload.js";
+import { SELECTORS } from "../consts/cssConsts.js";
 
 export async function sendRequestEvent(e) {
   e.preventDefault();
@@ -25,7 +26,7 @@ export async function sendRequestEvent(e) {
 };
 
 export const autoSendRequest = (requestType) => {
-  const requestButton = document.getElementById(`${requestType}-button`);
+  const requestButton = document.querySelector(SELECTORS.REQUEST_BUTTON_ID(requestType));
   if (requestButton) requestButton.disabled = true;
   showSpinner(requestType);
   try {

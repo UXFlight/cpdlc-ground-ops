@@ -1,3 +1,5 @@
+import { CLASS_NAMES, SELECTORS } from "../consts/cssConsts.js";
+
   const FULL_DASH_ARRAY = 113;
 
   const COLOR_CODES = {
@@ -49,7 +51,7 @@
   }
 
   export function updateTimerVisual(requestType, timeLeft, total) {
-    const timer = document.getElementById(`${requestType}_timer`);
+    const timer = document.querySelector(SELECTORS.REQUEST_TIMER(requestType));
     if (!timer) {
       console.warn(`[TIMER] No element found for: ${requestType}_timer`);
       return;
@@ -67,7 +69,7 @@
       progress.setAttribute('stroke-dashoffset', offset);
       progress.setAttribute('stroke', color);
 
-      progress.classList.remove('info', 'warning', 'alert');
+      progress.classList.remove(CLASS_NAMES.INFO, CLASS_NAMES.WARNING, CLASS_NAMES.ALERT);
       progress.classList.add(className);
     }
 

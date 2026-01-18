@@ -10,6 +10,7 @@ import { toggleSwitchEvent, setConfig } from './state/configState.js';
 import { closeSettingsButton } from './events/settings.js';
 import { downloadReport } from './events/downloadStats.js';
 import { initVoice } from './text-to-speech.js/speech.js';
+import { CLASS_NAMES, SELECTORS } from './consts/cssConsts.js';
 
 document.addEventListener("DOMContentLoaded", () => {
   setConfig();
@@ -22,7 +23,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 function listenToGlobalClickEvents() {
-  const overlays = document.querySelectorAll(".overlay");
+  const overlays = document.querySelectorAll(SELECTORS.OVERLAY);
 
   overlays.forEach(overlay => {
     overlay.addEventListener("click", () => toggleOverlay(overlay));
@@ -38,19 +39,19 @@ function listenToGlobalClickEvents() {
 }
 
 function listenToButtonEvents() {
-  const requestButtons = document.querySelectorAll(".request-button");
-  const cancelButtons = document.querySelectorAll(".cancel-button");
+  const requestButtons = document.querySelectorAll(SELECTORS.REQUEST_BUTTONS);
+  const cancelButtons = document.querySelectorAll(SELECTORS.CANCEL_BUTTONS);
 
-  const leftButton = document.getElementById("pushback-left");
-  const rightButton = document.getElementById("pushback-right");
+  const leftButton = document.querySelector(SELECTORS.PUSHBACK_LEFT);
+  const rightButton = document.querySelector(SELECTORS.PUSHBACK_RIGHT);
 
-  const settingsIcon = document.getElementById("settings-icon");
+  const settingsIcon = document.querySelector(SELECTORS.SETTINGS_ICON);
 
-  const downloadBtn = document.getElementById("download-btn");
+  const downloadBtn = document.querySelector(SELECTORS.DOWNLOAD_BUTTON);
 
-  const toggleButtons = document.querySelectorAll(".toggle-switch");
+  const toggleButtons = document.querySelectorAll(SELECTORS.TOGGLE_SWITCHES);
 
-  const closeSettings = document.getElementById('close-button');
+  const closeSettings = document.querySelector(SELECTORS.CLOSE_SETTINGS_BUTTON);
 
   // request buttons
   requestButtons.forEach(btn => {
@@ -85,6 +86,6 @@ function listenToButtonEvents() {
 }
 
 export function listenToHeaderEvents() {
-  const connectionStatus = document.getElementById('connection-status');
-  connectionStatus.addEventListener('click', () => connectionStatus.classList.toggle('show-tooltip'));
+  const connectionStatus = document.querySelector(SELECTORS.CONNECTION_STATUS);
+  connectionStatus.addEventListener('click', () => connectionStatus.classList.toggle(CLASS_NAMES.SHOW_TOOLTIP));
 }

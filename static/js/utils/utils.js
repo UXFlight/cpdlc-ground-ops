@@ -1,6 +1,8 @@
 import { state } from '../state/state.js';
 import { MSG_STATUS } from '../consts/status.js';
 import { REQUEST_TYPE } from '../consts/flightConsts.js';
+import { CLASS_NAMES, SELECTORS } from '../consts/cssConsts.js';
+import { CONNECTION_STATUS } from '../consts/connectionConsts.js';
 
 // small utils functions
 export function invalidRequest(action) {
@@ -13,8 +15,8 @@ function blockSecondRequest(action) {
 }
 
 export function closeCurrentOverlay() {
-    const open = document.querySelector(".overlay.open");
-    if (open) open.classList.remove("open");
+    const open = document.querySelector(SELECTORS.OVERLAY_OPEN);
+    if (open) open.classList.remove(CLASS_NAMES.OPEN);
 }
 
 export function getLatestEntry(stepKey) {
@@ -41,5 +43,6 @@ export function getActionInfoFromEvent(e) {
 }
 
 export function isConnected() {
-  return state.connection.backend === "connected" && state.connection.atc.status === "connected";
+  return state.connection.backend === CONNECTION_STATUS.CONNECTED &&
+    state.connection.atc.status === CONNECTION_STATUS.CONNECTED;
 }

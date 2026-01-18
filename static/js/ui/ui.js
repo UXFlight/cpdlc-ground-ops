@@ -1,17 +1,18 @@
 
 import { MSG_STATUS } from '../consts/status.js';
 import { getRecentClearance } from '../state/clearance.js';
+import { CLASS_NAMES, SELECTORS } from '../consts/cssConsts.js';
 
 // loader
 export function showSpinner(requestType) {
-  const spinner = document.getElementById(`${requestType}_spinner`);
+  const spinner = document.querySelector(SELECTORS.REQUEST_SPINNER(requestType));
   if (spinner) spinner.style.display = "inline-block";
   hideTick(requestType);
 }
 
 export function showTick(requestType, isError = false) {
-  const tick = document.getElementById(`${requestType}_tick`);
-  const wrapper = document.querySelector(`.overlay[data-requestType="${requestType}"]`);
+  const tick = document.querySelector(SELECTORS.REQUEST_TICK(requestType));
+  const wrapper = document.querySelector(SELECTORS.OVERLAY_BY_REQUESTTYPE_CAMEL(requestType));
 
   hideSpinner(requestType);
   if (wrapper) wrapper.setAttribute('data-status', isError ? 'error' : 'fulfilled');
@@ -19,35 +20,35 @@ export function showTick(requestType, isError = false) {
 
   tick.style.display = "inline-block";
   tick.textContent = isError ? "✖" : "✔";
-  tick.classList.toggle('error', isError);
-  tick.classList.toggle('success', !isError);
+  tick.classList.toggle(CLASS_NAMES.ERROR, isError);
+  tick.classList.toggle(CLASS_NAMES.SUCCESS, !isError);
 }
 
 export function hideSpinner(requestType) {
-  const spinner = document.getElementById(`${requestType}_spinner`);
+  const spinner = document.querySelector(SELECTORS.REQUEST_SPINNER(requestType));
   if (spinner) spinner.style.display = "none";
 }
 
 export function hideTick(requestType) {
-  const tick = document.getElementById(`${requestType}_tick`);
+  const tick = document.querySelector(SELECTORS.REQUEST_TICK(requestType));
   if (tick) {
     tick.style.display = 'none';
-    tick.classList.remove('error');
+    tick.classList.remove(CLASS_NAMES.ERROR);
   }
 }
 
 export function ensureMessageBoxNotEmpty(divId='history-log-box') {
-  const historyLogBox = document.getElementById(divId);
-  const noMessages = document.getElementById('empty-history-message');
-  if (historyLogBox.classList.contains('empty')) {
-      historyLogBox.classList.remove('empty');
-      noMessages?.classList.add('hidden');
+  const historyLogBox = document.querySelector(SELECTORS.BY_ID(divId));
+  const noMessages = document.querySelector(SELECTORS.EMPTY_HISTORY_MESSAGE);
+  if (historyLogBox.classList.contains(CLASS_NAMES.EMPTY)) {
+      historyLogBox.classList.remove(CLASS_NAMES.EMPTY);
+      noMessages?.classList.add(CLASS_NAMES.HIDDEN);
   }
 }
 
 export function clearMessageBox(boxId='history-log-box') {
   ensureMessageBoxNotEmpty();
-  const box = document.getElementById(boxId);
+  const box = document.querySelector(SELECTORS.BY_ID(boxId));
   if (box) box.innerHTML = '';
 }
 
@@ -59,22 +60,22 @@ export function playNotificationSound() {
 }
 
 export function flashElement(div) {
-    div.classList.add('flash');
-    setTimeout(() => div.classList.remove('flash'), 1500);
+    div.classList.add(CLASS_NAMES.FLASH);
+    setTimeout(() => div.classList.remove(CLASS_NAMES.FLASH), 1500);
 }
 
 
 export function updateTaxiClearanceMsg() {
   const recent = getRecentClearance();
-  const box = document.querySelector(".taxi-clearance-box");
-  const messageBox = document.getElementById("taxi-clearance-message");
+  const box = document.querySelector(SELECTORS.TAXI_CLEARANCE_BOX);
+  const messageBox = document.querySelector(SELECTORS.TAXI_CLEARANCE_MESSAGE);
 
-  const oldTag = document.getElementById("expected-tag");
+  const oldTag = document.querySelector(SELECTORS.EXPECTED_TAG);
   if (oldTag) oldTag.remove();
 
   if (!recent) {
     messageBox.innerHTML = `<p class="empty-box-message">No clearance received</p>`;
-    box.classList.remove("active");
+    box.classList.remove(CLASS_NAMES.ACTIVE);
     return;
   }
 
@@ -85,11 +86,11 @@ export function updateTaxiClearanceMsg() {
   ).join(" ");
 
   messageBox.innerHTML = `<div class="clearance-grid">${tokens}</div>`;
-  box.classList.add("active");
+  box.classList.add(CLASS_NAMES.ACTIVE);
 
-  box.classList.remove("pulse");
+  box.classList.remove(CLASS_NAMES.PULSE);
   void box.offsetWidth;
-  box.classList.add("pulse");
+  box.classList.add(CLASS_NAMES.PULSE);
 
   if (kind) {
     const tag = document.createElement("span");
@@ -133,7 +134,7 @@ export function showSnackbarFromPayload(payload) {
 
   const isError = status === "error" || status === "failed";
 
-  const container = document.getElementById("snackbar-container");
+  const container = document.querySelector(SELECTORS.SNACKBAR_CONTAINER);
   if (!container) return;
 
   const snackbar = document.createElement("div");
@@ -175,10 +176,10 @@ export function showSnackbarFromPayload(payload) {
 
   void snackbar.offsetWidth;
 
-  snackbar.classList.add("visible");
+  snackbar.classList.add(CLASS_NAMES.VISIBLE);
 
   // setTimeout(() => {
-  //   snackbar.classList.remove("visible");
+  //   snackbar.classList.remove(CLASS_NAMES.VISIBLE);
   //   snackbar.classList.add("fade-out");
   // }, 4000);
 
@@ -193,7 +194,7 @@ function formatLabel(text) {
 
 // STATUS UPDATER //
 export function updateMessageStatus(requestType, newStatus) {
-  const message = document.querySelector(`.new-message[data-requesttype="${requestType}"]`);
+  const message = document.querySelector(SELECTORS.NEW_MESSAGE_BY_REQUESTTYPE(requestType));
   if (!message) return;
 
   const statusEl = message.querySelector('.status');
@@ -207,7 +208,7 @@ export function updateMessageStatus(requestType, newStatus) {
 }
 
 export function updateOverlayStatus(requestType, newStatus) {
-  const overlay = document.querySelector(`.overlay[data-requesttype="${requestType}"]`);
+  const overlay = document.querySelector(SELECTORS.OVERLAY_BY_REQUESTTYPE(requestType));
   if (!overlay) return;
 
   Object.values(MSG_STATUS).forEach(status => {
@@ -219,8 +220,8 @@ export function updateOverlayStatus(requestType, newStatus) {
   overlay.classList.add(`status-${status}`);
   overlay.dataset.status = status;
 
-  const spinner = overlay.querySelector(`#${requestType}_spinner`);
-  const tick = overlay.querySelector(`#${requestType}_tick`);
+  const spinner = overlay.querySelector(SELECTORS.REQUEST_SPINNER(requestType));
+  const tick = overlay.querySelector(SELECTORS.REQUEST_TICK(requestType));
 
   if (!spinner || !tick) return;
 

@@ -8,6 +8,7 @@ import { autoLoadAction } from "../events/action.js";
 import { closeOverlay } from "../events/overlay.js";
 import { speak } from "../text-to-speech.js/speech.js";
 import { enableButtonsByStatus } from "../ui/buttons-ui.js";
+import { SELECTORS } from "../consts/cssConsts.js";
 
 export const handleAtcResponse = (data) => {
     const {
@@ -18,7 +19,7 @@ export const handleAtcResponse = (data) => {
         time_left,
     } = data
 
-    const cancelBtn = document.querySelector(`.cancel-button[data-requesttype="${step_code}"]`);
+    const cancelBtn = document.querySelector(SELECTORS.CANCEL_BUTTON_BY_REQUESTTYPE(step_code));
     if (cancelBtn) cancelBtn.disabled = true;
 
     closeOverlay(step_code);

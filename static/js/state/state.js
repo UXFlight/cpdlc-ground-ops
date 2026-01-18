@@ -1,15 +1,17 @@
 import { updateMessageStatus, updateOverlayStatus } from "../ui/ui.js";
 import { REQUEST_TYPE } from "../consts/flightConsts.js";
 import { markDashboardReady } from "./settingsState.js";
+import { CLASS_NAMES, SELECTORS } from "../consts/cssConsts.js";
+import { CONNECTION_STATUS } from "../consts/connectionConsts.js";
 
 // Global state
 export const state = {
   history: [],                // history logs
   connection: {
     connectedSince: null, // timestamp when the connection was established
-    backend: "connecting",    // "connecting" | "connected" | "disconnected"
+    backend: CONNECTION_STATUS.CONNECTING,    // "connecting" | "connected" | "disconnected"
     atc: {
-      status : "pending",     // "pending" | "connected" | "disconnected"
+      status : CONNECTION_STATUS.PENDING,     // "pending" | "connected" | "disconnected"
       facility: null, 
     },
   },
@@ -77,6 +79,6 @@ function formatToTime(isoString) {
 
 export function updateDirection(direction = null) {
   state.steps[REQUEST_TYPE.PUSHBACK].direction = direction;
-  document.getElementById("pushback-left").classList.toggle("active", direction === "left");
-  document.getElementById("pushback-right").classList.toggle("active", direction === "right");
+  document.querySelector(SELECTORS.PUSHBACK_LEFT).classList.toggle(CLASS_NAMES.ACTIVE, direction === "left");
+  document.querySelector(SELECTORS.PUSHBACK_RIGHT).classList.toggle(CLASS_NAMES.ACTIVE, direction === "right");
 }

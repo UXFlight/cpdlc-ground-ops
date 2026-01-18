@@ -11,23 +11,24 @@ import { handleCancelRequest } from "../socket-events/cancelRequestResponse.js";
 import { SOCKET_LISTENS } from "../consts/socketConsts.js";
 import { setConnectionInfos } from "../state/settingsState.js";
 import { updateClearance } from "../socket-events/clearanceUpdate.js";
+import { CONNECTION_STATUS } from "../consts/connectionConsts.js";
 
 export function setupSocketListeners() {
   listen(SOCKET_LISTENS.CONNECT, () => {
-    state.connection.backend = "connected";
+    state.connection.backend = CONNECTION_STATUS.CONNECTED;
     renderConnectionState(state.connection);
   });
 
   listen(SOCKET_LISTENS.DISCONNECT, () => {
-    state.connection.backend = "disconnected";
-    state.connection.atc.status = "disconnected";
+    state.connection.backend = CONNECTION_STATUS.DISCONNECTED;
+    state.connection.atc.status = CONNECTION_STATUS.DISCONNECTED;
     state.connection.atc.facility = null;
     renderConnectionState(state.connection);
     disableAllRequestButtons();
   });
 
   listen(SOCKET_LISTENS.CONNECTED_TO_ATC, (data) => {
-    state.connection.atc.status = "connected";
+    state.connection.atc.status = CONNECTION_STATUS.CONNECTED;
     state.connection.atc.facility = data.facility;
     renderConnectionState(state.connection);
     enableAllRequestButtons();
@@ -35,7 +36,7 @@ export function setupSocketListeners() {
   });
 
   listen(SOCKET_LISTENS.DISCONNECTED_FROM_ATC, () => {
-    state.connection.atc.status = "disconnected";
+    state.connection.atc.status = CONNECTION_STATUS.DISCONNECTED;
     state.connection.atc.facility = null;
     renderConnectionState(state.connection);
   });

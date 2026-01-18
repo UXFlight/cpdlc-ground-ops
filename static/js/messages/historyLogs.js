@@ -4,14 +4,15 @@ import { flashElement } from '../ui/ui.js';
 import { createButton } from '../ui/buttons-ui.js';
 import { createTimer } from '../ui/timer-ui.js';
 import { getBool, CONFIG_KEYS } from '../state/configState.js';
+import { CLASS_NAMES, SELECTORS } from '../consts/cssConsts.js';
 
 //DOM UTILITIES //
-const historyLogBox = document.getElementById('history-log-box');
+const historyLogBox = document.querySelector(SELECTORS.HISTORY_LOG_BOX);
 
 
 export function createGroupedLog({ stepKey, label, latest, history }) {
     const div = document.createElement('div');
-    div.classList.add('new-message');
+    div.classList.add(CLASS_NAMES.NEW_MESSAGE);
     div.dataset.requesttype = stepKey;
     div.dataset.status = latest.status;
     div.style.cursor = 'pointer';
