@@ -1,4 +1,3 @@
-import { SERVER_URL } from "../utils/consts/serverUrl.js";
 import { dashboardState } from "../state/settingsState.js";
 
 export async function downloadReport() {

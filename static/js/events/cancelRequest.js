@@ -1,8 +1,8 @@
 import { updateStep } from '../state/state.js';
-import { MSG_STATUS } from '../utils/consts/status.js';
+import { MSG_STATUS } from '../consts/status.js';
 import { getRequestTypeFromEvent } from "../utils/utils.js";
 import { emitCancelRequest } from "../socket/socket-emits.js";
-import { REQUEST_TYPE } from '../utils/consts/flightConsts.js';
+import { REQUEST_TYPE } from '../consts/flightConsts.js';
 import { state } from '../state/state.js';
 import { togglePushbackState } from '../ui/buttons-ui.js';
 
