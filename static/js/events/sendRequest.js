@@ -3,7 +3,7 @@ import { closeCurrentOverlay, getRequestTypeFromEvent, invalidRequest } from "..
 import { updateStep } from '../state/state.js';
 import { MSG_STATUS } from '../utils/consts/status.js';
 import { emitRequest } from '../socket/socket-emits.js';
-import { getRequestPayload } from "../utils/request-payload.js";
+import { getRequestPayload } from "../utils/requestPayload.js";
 
 export async function sendRequestEvent(e) {
   e.preventDefault();
