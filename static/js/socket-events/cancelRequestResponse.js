@@ -2,7 +2,7 @@ import { displayHistoryLogs } from "../events/filter.js";
 import { updateStep } from "../state/state.js";
 import { togglePushbackState } from "../ui/buttons-ui.js";
 import { hideSpinner } from "../ui/ui.js";
-import { REQUEST_TYPE } from "../utils/consts/flightConsts.js";
+import { REQUEST_TYPE } from "../consts/flightConsts.js";
 
 export const handleCancelRequest = (data) => {
     const { step_code, status, message, time_left } = data;

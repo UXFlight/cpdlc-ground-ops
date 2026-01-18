@@ -1,5 +1,5 @@
 
-import { MSG_STATUS } from '../utils/consts/status.js';
+import { MSG_STATUS } from '../consts/status.js';
 import { getRecentClearance } from '../state/clearance.js';
 
 // loader

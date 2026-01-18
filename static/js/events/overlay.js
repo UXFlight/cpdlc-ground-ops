@@ -1,6 +1,6 @@
 import { dashboardNeedsRefresh, updateDashboardPanel } from '../state/settingsState.js';
 import { state } from '../state/state.js';
-import { MSG_STATUS } from '../utils/consts/status.js';
+import { MSG_STATUS } from '../consts/status.js';
 import { closeCurrentOverlay } from '../utils/utils.js';
 
 // overlay event

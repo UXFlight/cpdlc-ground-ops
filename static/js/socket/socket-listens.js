@@ -8,7 +8,7 @@ import { handleActionResponse } from "../socket-events/actionResponse.js";
 import { handleRequestAck } from "../socket-events/requestResponse.js";
 import { handleError } from "../socket-events/errorEvent.js";
 import { handleCancelRequest } from "../socket-events/cancelRequestResponse.js";
-import { SOCKET_LISTENS } from "../utils/consts/socketConsts.js";
+import { SOCKET_LISTENS } from "../consts/socketConsts.js";
 import { setConnectionInfos } from "../state/settingsState.js";
 import { updateClearance } from "../socket-events/clearanceUpdate.js";
 

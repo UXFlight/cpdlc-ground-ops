@@ -1,5 +1,5 @@
 import { state, updateStep } from "../state/state.js";
-import { MSG_STATUS } from '../utils/consts/status.js';
+import { MSG_STATUS } from '../consts/status.js';
 import { displayHistoryLogs } from "../events/filter.js";
 
 export const handleRequestAck = (data) => {

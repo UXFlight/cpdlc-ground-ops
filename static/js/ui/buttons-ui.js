@@ -1,8 +1,8 @@
 import { actionEvent } from "../events/action.js";
 import { updateDirection } from "../state/state.js";
-import { WORKFLOW_BUTTONS } from "../utils/consts/buttonsWorkflow.js";
-import { ALL_ACTIONS, LOADABLE_REQUEST_TYPES, REQUEST_TYPE } from "../utils/consts/flightConsts.js";
-import { MSG_STATUS } from "../utils/consts/status.js";
+import { WORKFLOW_BUTTONS } from "../consts/buttonsWorkflow.js";
+import { ALL_ACTIONS, LOADABLE_REQUEST_TYPES, REQUEST_TYPE } from "../consts/flightConsts.js";
+import { MSG_STATUS } from "../consts/status.js";
 
 // enabling btns based on action and requestType
 export function enableButtonsByStatus(status, requestType) {

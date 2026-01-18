@@ -4,7 +4,7 @@ import { updateTimerVisual } from "../ui/timer-ui.js";
 import { getBool, CONFIG_KEYS } from "../state/configState.js";
 import { autoSendRequest } from "../events/sendRequest.js";
 import { enableRequestButton } from "../ui/buttons-ui.js";
-import { MSG_STATUS } from "../utils/consts/status.js";
+import { MSG_STATUS } from "../consts/status.js";
 
 
 export const tickUpdate = (data) => {

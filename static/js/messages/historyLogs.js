@@ -1,4 +1,4 @@
-import { MSG_STATUS } from '../utils/consts/status.js';
+import { MSG_STATUS } from '../consts/status.js';
 import { state } from '../state/state.js';
 import { flashElement } from '../ui/ui.js';
 import { createButton } from '../ui/buttons-ui.js';

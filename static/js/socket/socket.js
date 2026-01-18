@@ -1,4 +1,4 @@
-import { SERVER_URL } from "../utils/consts/serverUrl.js";
+import { SERVER_URL } from "../consts/serverUrl.js";
 
 const ROLE_PILOT = 0;
 

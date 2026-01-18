@@ -1,6 +1,6 @@
 import { state } from '../state/state.js';
-import { MSG_STATUS } from '../utils/consts/status.js';
-import { REQUEST_TYPE } from './consts/flightConsts.js';
+import { MSG_STATUS } from '../consts/status.js';
+import { REQUEST_TYPE } from '../consts/flightConsts.js';
 
 // small utils functions
 export function invalidRequest(action) {

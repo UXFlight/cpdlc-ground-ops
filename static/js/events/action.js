@@ -1,5 +1,5 @@
 import { updateStep } from '../state/state.js';
-import { MSG_STATUS } from '../utils/consts/status.js';
+import { MSG_STATUS } from '../consts/status.js';
 import { getActionInfoFromEvent } from '../utils/utils.js';
 import { emitAction } from '../socket/socket-emits.js';
 

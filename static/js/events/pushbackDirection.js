@@ -1,7 +1,7 @@
 import { state, updateDirection } from '../state/state.js';
-import { MSG_STATUS } from '../utils/consts/status.js';
+import { MSG_STATUS } from '../consts/status.js';
 import { isConnected } from '../utils/utils.js';
-import { REQUEST_TYPE } from '../utils/consts/flightConsts.js';
+import { REQUEST_TYPE } from '../consts/flightConsts.js';
 import { togglePushbackState } from '../ui/buttons-ui.js';
 
 // pushback direction

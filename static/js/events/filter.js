@@ -1,10 +1,10 @@
 import { state, updateDirection } from "../state/state.js";
 import { createGroupedLog } from "../messages/historyLogs.js";
 import { clearMessageBox } from "../ui/ui.js";
-import { MSG_STATUS } from '../utils/consts/status.js';
-import { STATUS_PRIORITY } from "../utils/consts/priorityConsts.js";
+import { MSG_STATUS } from '../consts/status.js';
+import { STATUS_PRIORITY } from "../consts/priorityConsts.js";
 import { CONFIG_KEYS, getBool, toggleFilter } from "../state/configState.js";
-import { REQUEST_TYPE } from "../utils/consts/flightConsts.js";
+import { REQUEST_TYPE } from "../consts/flightConsts.js";
 
 export const filterEvent = () => {
   const hasClosableLogs = state.history.some(

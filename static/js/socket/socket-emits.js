@@ -1,5 +1,5 @@
 import { send } from "./socket.js";
-import { SOCKET_EMITS } from "../utils/consts/socketConsts.js";
+import { SOCKET_EMITS } from "../consts/socketConsts.js";
 
 export function emitRequest(requestType, data = {}) {
   send(SOCKET_EMITS.SEND_REQUEST, {
@@ -14,8 +14,4 @@ export function emitCancelRequest(requestType) {
 
 export function emitAction(action, requestType) {
   send(SOCKET_EMITS.SEND_ACTION, { action, requestType });
-}
-
-export function emitGetState() {
-  send("getState");
 }

@@ -1,5 +1,5 @@
 import { updateMessageStatus, updateOverlayStatus } from "../ui/ui.js";
-import { REQUEST_TYPE } from "../utils/consts/flightConsts.js";
+import { REQUEST_TYPE } from "../consts/flightConsts.js";
 import { markDashboardReady } from "./settingsState.js";
 
 // Global state
