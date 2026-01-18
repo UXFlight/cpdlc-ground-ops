@@ -6,6 +6,16 @@ const speechConfig = {
     voiceName: "English (America)+Michael",
 };
 
+const preferredVoices = [
+    speechConfig.voiceName,
+    "English (America)+Michael",
+    "English (America)+Paul",
+    "English (America)+Zac",
+    "English (America)+Caleb",
+    "English (America)+Mike",
+    "English (America)+David"
+];
+
 let voice = null;
 let queue = [];
 let isSpeaking = false;
@@ -26,17 +36,7 @@ function loadVoices() {
 export async function initVoice() {
     const voices = await loadVoices();
 
-    const preferred = [
-        speechConfig.voiceName,
-        "English (America)+Michael",
-        "English (America)+Paul",
-        "English (America)+Zac",
-        "English (America)+Caleb",
-        "English (America)+Mike",
-        "English (America)+David"
-    ];
-
-    for (const name of preferred) {
+    for (const name of preferredVoices) {
         if (!name) continue;
         const found = voices.find(v => v.name === name);
         if (found) {
