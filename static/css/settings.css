@@ -67,18 +67,15 @@
 }
 
 /* CONFIGURATION SECTION */
-.config-section {
-  flex: 1;
-}
-
 .config-list {
+  flex: 1;
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   grid-template-rows: repeat(3, 1fr);
   gap: 12px;
-  flex-wrap: wrap;
-  height: 100%;
   padding-bottom: 16px;
+  overflow-y: auto;
+
 }
 
 .config-item {
@@ -89,7 +86,7 @@
   background: var(--bg-black);
   border: 1px solid var(--border-primary);
   border-radius: 10px;
-  height: 100%; 
+  flex: 1; 
   box-sizing: border-box;
 }
 
