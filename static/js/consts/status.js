@@ -1,4 +1,5 @@
 export const MSG_STATUS = {
+    IDLE: 'idle',
     CLOSED: 'closed', // success
     REQUESTED: 'requested',
     NEW: 'new',
