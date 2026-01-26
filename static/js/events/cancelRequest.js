@@ -1,4 +1,4 @@
-import { updateStep } from '../state/state.js';
+import { updateStep, state } from '../state/state.js';
 import { MSG_STATUS } from '../consts/status.js';
 import { getRequestTypeFromEvent } from "../utils/utils.js";
 import { emitCancelRequest } from "../socket/socket-emits.js";
@@ -11,7 +11,12 @@ export async function cancelRequestEvent(e) {
   if (!requestType) return;
 
                       
-  if (requestType === REQUEST_TYPE.PUSHBACK) togglePushbackState(true)
+  if (requestType === REQUEST_TYPE.PUSHBACK) {
+    togglePushbackState(true)
+    console.log(state.steps[REQUEST_TYPE.PUSHBACK].status)
+    console.log(MSG_STATUS.REQUESTED)
+    if (state.steps[REQUEST_TYPE.PUSHBACK].status !== MSG_STATUS.REQUESTED) return
+  }
 
   try {
     emitCancelRequest(requestType);

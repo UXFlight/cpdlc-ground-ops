@@ -3,6 +3,7 @@ import { REQUEST_TYPE } from "../consts/flightConsts.js";
 import { markDashboardReady } from "./settingsState.js";
 import { CLASS_NAMES, SELECTORS } from "../consts/cssConsts.js";
 import { CONNECTION_STATUS } from "../consts/connectionConsts.js";
+import { MSG_STATUS } from "../consts/status.js";
 
 // Global state
 export const state = {
@@ -28,7 +29,7 @@ export const state = {
 function createStep(label, extra = {}) {
   return {
     label,
-    status: null,
+    status: MSG_STATUS.IDLE,
     message: null,
     timestamp: null,
     timeLeft : null,

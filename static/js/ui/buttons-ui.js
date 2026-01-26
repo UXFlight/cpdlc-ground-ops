@@ -134,7 +134,8 @@ export function togglePushbackState(isCancelled = false, direction = "") {
 
     if (isCancelled) {
         pushBackDir.style.display = "flex";
-        pushBackRequest.disabled = false;
+        pushBackRequest.disabled = true;
+        pushBackCancel.disabled = true;
         [pushBackCancel, pushBackRequest].forEach(btn => btn.style.display = "none");
         ["pushback-left", "pushback-right"].forEach(id => {
             const button = document.querySelector(SELECTORS.BY_ID(id));
@@ -145,7 +146,10 @@ export function togglePushbackState(isCancelled = false, direction = "") {
     }
 
     pushBackDir.style.display = "none";
-    [pushBackCancel, pushBackRequest].forEach(btn => btn.style.display = "block");
+    [pushBackCancel, pushBackRequest].forEach(btn => {
+        btn.disabled = false;
+        btn.style.display = "block"
+    });
     ["pushback-left", "pushback-right"].forEach(id => document.querySelector(SELECTORS.BY_ID(id)).disabled = true);
     label.textContent = `Pushback ${direction.toUpperCase()}`;
 }
