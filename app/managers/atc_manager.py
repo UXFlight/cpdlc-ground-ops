@@ -32,5 +32,8 @@ class AtcManager:
     def get_all(self) -> list[AtcPublicView]:
         return [atc.to_public() for atc in self._atcs.values()]
 
+    def get_all_atcs(self) -> list["Atc"]:
+        return list(self._atcs.values())
+
     def has_any(self) -> bool:
         return len(self._atcs) > 0

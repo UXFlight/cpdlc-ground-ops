@@ -16,12 +16,15 @@ if TYPE_CHECKING:
     from app.managers.airport_map_manager import AirportMapManager
 
 class SocketManager:
-    def __init__(self, socket_service: "SocketService", pilot_manager: "PilotManager", atc_manager: "AtcManager", airport_map_manager : "AirportMapManager"):
+    def __init__(self, socket_service: "SocketService", pilot_manager: "PilotManager",
+                 atc_manager: "AtcManager", airport_map_manager : "AirportMapManager",
+                 metrics_store=None):
         self.socket: "SocketService" = socket_service
         self.pilots: "PilotManager" = pilot_manager
         self.atc_manager: "AtcManager" = atc_manager
         self.airport_map_manager : "AirportMapManager" = airport_map_manager
         self.clearance_engine = ClearanceEngine(airport_map_manager.map_data)
+        self.metrics = metrics_store
         
         # not injected
         self.logger = logger
@@ -35,6 +38,14 @@ class SocketManager:
             self.logger.log_error(pilot_id=sid, context="SOCKET", error="Invalid result payload")
             return
         self.socket.send(result["event"], result["payload"], room=sid)
+
+    def _record_event(self, role: str, start_ts: float, client_sent_ts: Optional[float]) -> None:
+        if self.metrics:
+            self.metrics.record_event(role, start_ts, get_current_timestamp(), client_sent_ts)
+
+    def _record_error(self) -> None:
+        if self.metrics:
+            self.metrics.record_error()
 
     def init_events(self):
         self.socket.listen("connect", self.on_connect)
@@ -108,6 +119,7 @@ class SocketManager:
     def on_send_request(self, data: dict):
         sid = request.sid # type: ignore
         pilot : Pilot = self.pilots.get(sid)
+        start_ts = get_current_timestamp()
 
         try:
             step_payload: UpdateStepData = pilot.handle_send_request(data)
@@ -150,16 +162,19 @@ class SocketManager:
                 "event": "new_request",
                 "payload": step_payload.to_atc_payload()
             })
+            self._record_event("pilot", start_ts, data.get("client_sent_ts"))
 
         except Exception as e:
             error_payload: SocketError = pilot._error("REQUEST", str(e), data.get("requestType"))
             self._emit_event(sid, error_payload)
+            self._record_error()
             
 
     ## === CANCEL REQUEST
     def on_cancel_request(self, data: dict):
         sid = request.sid # type: ignore
         pilot = self.pilots.get(sid)
+        start_ts = get_current_timestamp()
 
         try:
             update_data: UpdateStepData = pilot.handle_cancel_request(data)
@@ -191,15 +206,18 @@ class SocketManager:
                         "instruction": clearance["instruction"]
                     }
                 })
+            self._record_event("pilot", start_ts, data.get("client_sent_ts"))
             
         except Exception as e:
             error_payload: SocketError = pilot._error("CANCEL", str(e), data.get("requestType"))
             self._emit_event(sid, error_payload)
+            self._record_error()
 
     ## === ACTION EVENTS
     def on_action_event(self, data: dict):
         sid = request.sid # type: ignore
         pilot = self.pilots.get(sid)
+        start_ts = get_current_timestamp()
 
         try:
             update_data : UpdateStepData = pilot.process_action(data)
@@ -231,19 +249,23 @@ class SocketManager:
                         "clearance": clearance
                     }
                 })
+            self._record_event("pilot", start_ts, data.get("client_sent_ts"))
 
         except Exception as e:
             error_payload = pilot._error("ACTION", str(e), data.get("requestType"))
             self._emit_event(sid, error_payload)
+            self._record_error()
 
     ## ATC EVENTS
     ## === SEND RESPONSE
     def on_atc_response(self, payload: dict):
         sid = request.sid  # type: ignore
         atc = self.atc_manager.get(sid)
+        start_ts = get_current_timestamp()
 
         if not atc:
             self.socket.send("error", {"message": "ATC not connected"}, room=sid)
+            self._record_error()
             return
 
         try:
@@ -252,6 +274,10 @@ class SocketManager:
                 self.socket.send("error", {"message": f"Unknown pilot: {pilot_sid}"}, room=sid)
                 return
 
+            if not self.pilots.exists(pilot_sid):
+                self.socket.send("error", {"message": f"Pilot with SID {pilot_sid} does not exist"}, room=sid)
+                self._record_error()
+                return
             pilot = self.pilots.get(pilot_sid)
 
             update: UpdateStepData = atc.handle_response(payload, pilot)
@@ -317,9 +343,11 @@ class SocketManager:
                 message=update.message,
                 time_left=update.time_left
             )
+            self._record_event("atc", start_ts, payload.get("client_sent_ts"))
 
         except ValueError as e:
             self.socket.send("error", {"message": str(e)}, room=sid)
+            self._record_error()
         
     ## === PILOT LIST
     def handle_pilot_list(self):
