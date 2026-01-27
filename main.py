@@ -7,6 +7,8 @@ from flask_cors import CORS
 from flask_socketio import SocketIO
 from app.classes.socket import SocketService
 from app.managers import PilotManager, SocketManager, AtcManager, AirportMapManager
+from app.testing.observability.system_metrics import SystemMetrics
+from app.testing.observability.system_snapshot import register_system_snapshot
 from app.routes import general
 
 from app.classes.agent import Echo
@@ -37,7 +39,8 @@ if __name__ == '__main__':
     # Echo.start_ingescape_agent() #! to start ingescape agent
     
     airport_map_manager = AirportMapManager()
-    socket_service = SocketService(socketio)
+    metrics_store = SystemMetrics()
+    socket_service = SocketService(socketio, metrics_store)
     pilot_manager = PilotManager(airport_map_manager=airport_map_manager)
     atc_manager = AtcManager()
 
@@ -49,10 +52,12 @@ if __name__ == '__main__':
         socket_service=socket_service, 
         pilot_manager=pilot_manager, 
         atc_manager=atc_manager,
-        airport_map_manager=airport_map_manager
+        airport_map_manager=airport_map_manager,
+        metrics_store=metrics_store
     )
     
     socket_manager.init_events()
+    register_system_snapshot(app, pilot_manager, atc_manager, metrics_store)
     
 
     try:
