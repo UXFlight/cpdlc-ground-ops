@@ -25,6 +25,7 @@ class SocketManager:
         self.airport_map_manager : "AirportMapManager" = airport_map_manager
         self.clearance_engine = ClearanceEngine(airport_map_manager.map_data)
         self.metrics = metrics_store
+        self._disconnecting: set[str] = set()
         
         # not injected
         self.logger = logger
@@ -95,24 +96,36 @@ class SocketManager:
             logger.log_event(pilot_id=sid, event_type="SOCKET", message="Unknown role -- disconnecting")
             self.socket.disconnect(sid)
 
-    def on_disconnect(self):
+    def on_disconnect(self, data=None):
         sid = request.sid # type: ignore
+        if sid in self._disconnecting:
+            return
+        self._disconnecting.add(sid)
 
-        if self.pilots.exists(sid):
-            self.pilots.remove(sid)
-            logger.log_event(pilot_id=sid, event_type="SOCKET", message=f"Pilot disconnected: {sid}")
+        try:
+            if self.pilots.exists(sid):
+                self.pilots.remove(sid)
+                logger.log_event(pilot_id=sid, event_type="SOCKET", message=f"Pilot disconnected: {sid}")
 
-            if self.atc_manager.has_any():
-                self.socket.send("pilot_disconnected", sid, room="atc_room")
+                if self.atc_manager.has_any():
+                    try:
+                        self.socket.send("pilot_disconnected", sid, room="atc_room")
+                    except Exception as e:
+                        logger.log_error(pilot_id=sid, context="DISCONNECT", error=str(e))
 
-        elif self.atc_manager.exists(sid):
-            self.atc_manager.remove(sid)
-            atc_list = self.atc_manager.get_all()
-            self.socket.send("atc_list", atc_list, room="atc_room")
-            logger.log_event(pilot_id=sid, event_type="SOCKET", message=f"ATC disconnected: {sid}")
+            elif self.atc_manager.exists(sid):
+                self.atc_manager.remove(sid)
+                atc_list = self.atc_manager.get_all()
+                try:
+                    self.socket.send("atc_list", atc_list, room="atc_room")
+                except Exception as e:
+                    logger.log_error(pilot_id=sid, context="DISCONNECT", error=str(e))
+                logger.log_event(pilot_id=sid, event_type="SOCKET", message=f"ATC disconnected: {sid}")
 
-        else:
-            logger.log_event(pilot_id=sid, event_type="SOCKET", message="Unknown SID disconnected")
+            else:
+                logger.log_event(pilot_id=sid, event_type="SOCKET", message="Unknown SID disconnected")
+        finally:
+            self._disconnecting.discard(sid)
 
 
     ## === SEND REQUESTS
@@ -167,6 +180,7 @@ class SocketManager:
         except Exception as e:
             error_payload: SocketError = pilot._error("REQUEST", str(e), data.get("requestType"))
             self._emit_event(sid, error_payload)
+            logger.log_error(pilot_id=sid, context="REQUEST", error=str(e))
             self._record_error()
             
 
@@ -211,6 +225,7 @@ class SocketManager:
         except Exception as e:
             error_payload: SocketError = pilot._error("CANCEL", str(e), data.get("requestType"))
             self._emit_event(sid, error_payload)
+            logger.log_error(pilot_id=sid, context="CANCEL", error=str(e))
             self._record_error()
 
     ## === ACTION EVENTS
@@ -254,6 +269,7 @@ class SocketManager:
         except Exception as e:
             error_payload = pilot._error("ACTION", str(e), data.get("requestType"))
             self._emit_event(sid, error_payload)
+            logger.log_error(pilot_id=sid, context="ACTION", error=str(e))
             self._record_error()
 
     ## ATC EVENTS
@@ -265,6 +281,7 @@ class SocketManager:
 
         if not atc:
             self.socket.send("error", {"message": "ATC not connected"}, room=sid)
+            logger.log_error(pilot_id=sid, context="ATC_RESPONSE", error="ATC not connected")
             self._record_error()
             return
 
@@ -272,10 +289,12 @@ class SocketManager:
             pilot_sid = payload.get("pilot_sid")
             if not pilot_sid:
                 self.socket.send("error", {"message": f"Unknown pilot: {pilot_sid}"}, room=sid)
+                logger.log_error(pilot_id=sid, context="ATC_RESPONSE", error="Missing pilot_sid")
                 return
 
             if not self.pilots.exists(pilot_sid):
                 self.socket.send("error", {"message": f"Pilot with SID {pilot_sid} does not exist"}, room=sid)
+                logger.log_error(pilot_id=sid, context="ATC_RESPONSE", error=f"Pilot not found: {pilot_sid}")
                 self._record_error()
                 return
             pilot = self.pilots.get(pilot_sid)
@@ -347,10 +366,11 @@ class SocketManager:
 
         except ValueError as e:
             self.socket.send("error", {"message": str(e)}, room=sid)
+            logger.log_error(pilot_id=sid, context="ATC_RESPONSE", error=str(e))
             self._record_error()
         
     ## === PILOT LIST
-    def handle_pilot_list(self):
+    def handle_pilot_list(self, data=None):
         sid = request.sid  # type: ignore
         pilot_list_data = self.get_adjusted_pilot_list()
         self.socket.send("pilot_list", pilot_list_data, room=sid)
@@ -379,15 +399,21 @@ class SocketManager:
         sid = request.sid # type: ignore
         if not pilot_sid:
             self.socket.send("error", {"message": "Missing pilot SID"}, room=sid)
+            logger.log_error(pilot_id=sid, context="SELECT_PILOT", error="Missing pilot SID")
+            self._record_error()
             return
 
         if not self.pilots.exists(pilot_sid):
             self.socket.send("error", {"message": f"Pilot with SID {pilot_sid} does not exist"}, room=sid)
+            logger.log_error(pilot_id=sid, context="SELECT_PILOT", error=f"Pilot not found: {pilot_sid}")
+            self._record_error()
             return
         
         atc = self.atc_manager.get(sid)
         if not atc:
             self.socket.send("error", {"message": "ATC not connected"}, room=sid)
+            logger.log_error(pilot_id=sid, context="SELECT_PILOT", error="ATC not connected")
+            self._record_error()
             return
         
         atc.selected_pilot = pilot_sid
@@ -398,11 +424,15 @@ class SocketManager:
         sid = request.sid # type: ignore
         if not self.airport_map_manager:
             self.socket.send("error", {"message": "Airport map manager not initialized"}, room=sid)
+            logger.log_error(pilot_id=sid, context="MAP_REQUEST", error="Airport map manager not initialized")
+            self._record_error()
             return
 
         map_data = self.airport_map_manager.get_map()
         if not map_data:
             self.socket.send("error", {"message": "No airport map data available"}, room=sid)
+            logger.log_error(pilot_id=sid, context="MAP_REQUEST", error="No airport map data available")
+            self._record_error()
             return
 
         self.socket.send("airport_map_data", map_data, room=sid)
@@ -413,16 +443,22 @@ class SocketManager:
         atc = self.atc_manager.get(sid)
         if not atc:
             self.socket.send("error", {"message": "ATC not connected"}, room=sid)
+            logger.log_error(pilot_id=sid, context="CLEARANCE", error="ATC not connected")
+            self._record_error()
             return
 
         pilot_sid = payload.get("pilot_sid")
         if not pilot_sid:
             self.socket.send("error", {"message": "Missing pilot SID"}, room=sid)
+            logger.log_error(pilot_id=sid, context="CLEARANCE", error="Missing pilot SID")
+            self._record_error()
             return
 
         pilot = self.pilots.get(pilot_sid)
         if not pilot:
             self.socket.send("error", {"message": f"Pilot with SID {pilot_sid} does not exist"}, room=sid)
+            logger.log_error(pilot_id=sid, context="CLEARANCE", error=f"Pilot not found: {pilot_sid}")
+            self._record_error()
             return
 
         try:
@@ -450,3 +486,5 @@ class SocketManager:
 
         except Exception as e:
             self.socket.send("error", {"message": str(e)}, room=sid)
+            logger.log_error(pilot_id=sid, context="CLEARANCE", error=str(e))
+            self._record_error()
