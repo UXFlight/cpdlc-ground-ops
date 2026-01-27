@@ -115,9 +115,10 @@ class SocketManager:
 
             elif self.atc_manager.exists(sid):
                 self.atc_manager.remove(sid)
+                self.socket.leave_room(sid, room="atc_room")
                 atc_list = self.atc_manager.get_all()
                 try:
-                    self.socket.send("atc_list", atc_list, room="atc_room")
+                    self.socket.send("atc_list", atc_list, room="atc_room", skip_sid=sid)
                 except Exception as e:
                     logger.log_error(pilot_id=sid, context="DISCONNECT", error=str(e))
                 logger.log_event(pilot_id=sid, event_type="SOCKET", message=f"ATC disconnected: {sid}")

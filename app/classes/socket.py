@@ -9,8 +9,8 @@ class SocketService:
     def listen(self, event_name, callback):
         self.socketio.on(event_name)(callback)
 
-    def send(self, event, data, room=None): 
-        self.socketio.emit(event, data, to=room)
+    def send(self, event, data, room=None, skip_sid=None): 
+        self.socketio.emit(event, data, to=room, skip_sid=skip_sid)
         if self.metrics:
             self.metrics.record_emit(event, room)
 
