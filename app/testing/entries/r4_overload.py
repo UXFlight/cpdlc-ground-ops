@@ -25,7 +25,7 @@ def _write_result(outdir: str, test_id: str, params: dict, result: dict) -> str:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--server", default="http://localhost:5322")
+    parser.add_argument("--server", default="http://127.0.0.1:5321")
     parser.add_argument("--atc", type=int, required=True)
     parser.add_argument("--pilots", type=int, required=True)
     parser.add_argument("--duration", type=float, default=30.0)
