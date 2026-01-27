@@ -71,8 +71,6 @@ def run_once(server: str, atc_count: int, pilot_count: int,
                                   metrics_end.get("role_counts", {})),
         "delivered_counts": _diff_dict(metrics_start.get("delivered_counts", {}),
                                        metrics_end.get("delivered_counts", {})),
-        "delivered_per_pilot": _diff_dict(metrics_start.get("delivered_per_pilot", {}),
-                                          metrics_end.get("delivered_per_pilot", {})),
     }
     return {
         "metrics": metrics_end,

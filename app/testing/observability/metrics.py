@@ -20,7 +20,6 @@ class MetricsStore:
         self.total_errors = 0
         self.role_counts: Dict[str, int] = {}
         self.delivered_counts: Dict[str, int] = {}
-        self.delivered_per_pilot: Dict[str, int] = {}
         self.end_to_end_ms: Deque[float] = deque(maxlen=METRICS_WINDOW)
         self.server_processing_ms: Deque[float] = deque(maxlen=METRICS_WINDOW)
 
@@ -39,7 +38,6 @@ class MetricsStore:
 
     def record_delivery(self, to_role: str, pilot_id: str) -> None:
         self.delivered_counts[to_role] = self.delivered_counts.get(to_role, 0) + 1
-        self.delivered_per_pilot[pilot_id] = self.delivered_per_pilot.get(pilot_id, 0) + 1
 
     def snapshot(self) -> dict:
         end_vals = list(self.end_to_end_ms)
@@ -49,7 +47,6 @@ class MetricsStore:
             "total_errors": self.total_errors,
             "role_counts": dict(self.role_counts),
             "delivered_counts": dict(self.delivered_counts),
-            "delivered_per_pilot": dict(self.delivered_per_pilot),
             "end_to_end_ms": {
                 "p50": _percentile(end_vals, 50),
                 "p95": _percentile(end_vals, 95),
