@@ -27,22 +27,24 @@ def run_once(server: str, atc_count: int, pilot_count: int,
         t.start()
     time.sleep(1.0)
     for i in range(atc_count):
-        client = SystemLoadClient("atc", server, interval, duration)
+        client = SystemLoadClient("atc", server, interval, duration, i, atc_count)
         t = threading.Thread(target=client.start, daemon=True)
         threads.append(t)
         t.start()
     issues = []
+    last_state = None
     if poll_interval > 0:
         end_ts = time.time() + duration
         while time.time() < end_ts:
             state = fetch_json(f"{server}/testing/state")
+            last_state = state
             if state.get("validation_issues"):
                 issues.extend(state["validation_issues"])
             time.sleep(poll_interval)
     for t in threads:
         t.join()
     metrics_end = fetch_json(f"{server}/testing/metrics")
-    state = fetch_json(f"{server}/testing/state")
+    state = last_state or fetch_json(f"{server}/testing/state")
     metrics_delta = {
         "total_messages": metrics_end.get("total_messages", 0) - metrics_start.get("total_messages", 0),
         "total_errors": metrics_end.get("total_errors", 0) - metrics_start.get("total_errors", 0),

@@ -2,24 +2,26 @@ import argparse
 import json
 import os
 import time
-
 from ..runners.run_scenarios import run_once
+from ..plotting import plot_basic
 
 
 def _format_name(test_id: str, params: dict, stamp: str) -> str:
     dur = int(round(params["duration"]))
     interval = str(params["interval"]).replace(".", "p")
-    return f"{test_id}_A{params['atc']:02d}_P{params['pilots']:03d}_D{dur:02d}_I{interval}_{stamp}.txt"
+    return f"{test_id}_A{params['atc']:02d}_P{params['pilots']:03d}_D{dur:02d}_I{interval}_{stamp}"
 
 
 def _write_result(outdir: str, test_id: str, params: dict, result: dict) -> str:
-    os.makedirs(outdir, exist_ok=True)
-    stamp = time.strftime("%Y%m%d-%H%M%S")
+    stamp = time.strftime("%H:%M:%S")
     name = _format_name(test_id, params, stamp)
-    path = os.path.join(outdir, name)
+    run_dir = os.path.join(outdir, "R1", name)
+    os.makedirs(run_dir, exist_ok=True)
+    path = os.path.join(run_dir, "test_results.json")
     payload = {"test_id": test_id, "params": params, "result": result}
     with open(path, "w", encoding="ascii") as f:
         f.write(json.dumps(payload, indent=2))
+    plot_basic(test_id, result, params, run_dir)
     return path
 
 
