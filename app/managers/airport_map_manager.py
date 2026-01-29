@@ -3,7 +3,7 @@ from app.classes.apt_parser import APTParser
 from app.utils.simulate_pos import simulate_plane_from_map
 from app.utils.types import AirportMapData, Plane
 
-ICAO_DEFAULT = "CYUL"  # DEFAULT ICAO, CAN CHANGE IT BASED ON YOUR NEEDS
+ICAO_DEFAULT = "OEDF"  # DEFAULT ICAO, CAN CHANGE IT BASED ON YOUR NEEDS
 
 class AirportMapManager:
     def __init__(self, icao: str = ICAO_DEFAULT):
