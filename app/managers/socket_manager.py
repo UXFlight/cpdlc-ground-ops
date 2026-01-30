@@ -277,12 +277,18 @@ class SocketManager:
     ## === SEND RESPONSE
     def on_atc_response(self, payload: dict):
         sid = request.sid  # type: ignore
-        atc = self.atc_manager.get(sid)
         start_ts = get_current_timestamp()
 
-        if not atc:
+        if not self.atc_manager.exists(sid):
             self.socket.send("error", {"message": "ATC not connected"}, room=sid)
             logger.log_error(pilot_id=sid, context="ATC_RESPONSE", error="ATC not connected")
+            self._record_error()
+            return
+        try:
+            atc = self.atc_manager.get(sid)
+        except KeyError as e:
+            self.socket.send("error", {"message": "ATC not connected"}, room=sid)
+            logger.log_error(pilot_id=sid, context="ATC_RESPONSE", error=str(e))
             self._record_error()
             return
 

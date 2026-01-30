@@ -28,11 +28,9 @@ class SystemLoadClient:
         self.server_url = server_url
         self.interval_s = interval_s
         self.duration_s = duration_s
+        # Keep load tests deterministic; reconnections create extra sessions.
         self._sio = socketio.Client(
-            reconnection=True,
-            reconnection_attempts=5,
-            reconnection_delay=1,
-            reconnection_delay_max=5,
+            reconnection=False,
             logger=False,
             engineio_logger=False,
         )
