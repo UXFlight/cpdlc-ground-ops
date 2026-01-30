@@ -113,7 +113,7 @@ function createHistoryDetails(historyEntries) {
     historyEntries.forEach(entry => {
         const p = document.createElement('p');
         p.className = 'message-response';
-        p.innerText = `${entry.timestamp} → ${entry.status.toUpperCase()}: ${entry.message || "--"}`;
+        p.innerText = `(${entry.timestamp}) ${entry.status.toUpperCase()}: ${entry.message || "--"}`;
         container.appendChild(p);
     });
 
