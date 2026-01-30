@@ -63,6 +63,10 @@ class SystemLoadClient:
         def _new_request(data):
             if self.role != ROLE_ATC: return
             if data.get("status") != StepStatus.NEW.value: return
+            sid = data.get("pilot_sid")
+            if self._atc_total > 1 and sid:
+                if sum(ord(c) for c in sid) % self._atc_total != self._atc_index:
+                    return
             key = self._queue_key(data)
             if key in self._seen: return
             self._seen.add(key)
@@ -73,6 +77,9 @@ class SystemLoadClient:
             if self.role != ROLE_ATC: return
             for pilot in data or []:
                 sid = pilot.get("sid")
+                if self._atc_total > 1 and sid:
+                    if sum(ord(c) for c in sid) % self._atc_total != self._atc_index:
+                        continue
                 for code, step in (pilot.get("steps") or {}).items():
                     status = step.get("status")
                     if status == StepStatus.NEW.value:
@@ -157,12 +164,6 @@ class SystemLoadClient:
             if self._queue: item = self._queue.pop(0)
         if not item: return
         sid = item.get("pilot_sid")
-        if self._atc_total > 1 and sid:
-            if sum(ord(c) for c in sid) % self._atc_total != self._atc_index:
-                # Not assigned to this ATC; requeue for the owning ATC.
-                with self._queue_lock:
-                    self._queue.append(item)
-                return
         payload = {"pilot_sid": sid, "step_code": item.get("step_code"), "request_id": item.get("request_id"),
                    "action": ACTION_AFFIRM, "message": "ack", "client_sent_ts": time.time()}
         self._safe_emit("atcResponse", payload)
