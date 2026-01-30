@@ -201,7 +201,7 @@ REQUEST ID: ${step.request_id}
   }
 
   formatTimestamp(ts: number | null | undefined): string {
-    if (!ts) return '—';
+    if (!ts) return '--';
     const date = new Date(ts * 1000);
     return date.toLocaleTimeString([], {
       hour: '2-digit',

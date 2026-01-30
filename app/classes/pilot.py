@@ -287,7 +287,7 @@ class Pilot:
 
     ## === Timer ===
     def start_timer_for_step(self, step: Step, socket: SocketService):
-        logger.log_event(self.sid, 'TICK', f"{step.step_code} — {step.time_left}s left")
+        logger.log_event(self.sid, 'TICK', f"{step.step_code} {step.time_left}s left")
         self.timer_manager.start_timer(
             step=step,
             step_code=step.step_code,

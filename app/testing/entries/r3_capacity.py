@@ -15,7 +15,7 @@ def _format_name(test_id: str, params: dict, stamp: str) -> str:
 def _write_result(outdir: str, test_id: str, params: dict, result: dict) -> str:
     stamp = time.strftime("%H:%M:%S")
     name = _format_name(test_id, params, stamp)
-    run_dir = os.path.join(outdir, "R1", name)
+    run_dir = os.path.join(outdir, "R3", name)
     os.makedirs(run_dir, exist_ok=True)
     path = os.path.join(run_dir, "test_results.json")
     payload = {"test_id": test_id, "params": params, "result": result}
@@ -39,7 +39,7 @@ def main() -> None:
 
     result = run_once(args.server, args.atc, args.pilots, args.duration,
                       args.interval, args.pilot_prefix, args.poll_interval)
-    path = _write_result(args.outdir, "R1_capacity", vars(args), result)
+    path = _write_result(args.outdir, "R3_capacity", vars(args), result)
     print(f"[RESULT] {path}")
 
 

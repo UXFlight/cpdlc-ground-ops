@@ -23,7 +23,7 @@ class LogManager:
     # PUBLIC
     def log_event(self, pilot_id: str, event_type: str, message: str):
         timestamp = get_formatted_time(get_current_timestamp())
-        line = f"[{timestamp}] [{event_type.upper():<10}] {message}\n"
+        line = f"[{timestamp}] {event_type.upper():<10} {message}\n"
         print(line.strip())
         if self.enabled:
             log_dir = self._get_log_dir(pilot_id)
@@ -39,7 +39,10 @@ class LogManager:
             "timeLeft": time_left if time_left is not None else None
         }
         line = f"[{timestamp}] [REQUEST   ] {json.dumps(log_data, ensure_ascii=False)}\n"
-        print(line.strip())
+        msg = message.replace('"', '\\"')
+        time_str = f" timeLeft={time_left}" if time_left is not None else ""
+        console_line = f"[{timestamp}] REQUEST {request_type} status={status} msg=\"{msg}\"{time_str}"
+        print(console_line)
         if self.enabled:
             log_dir = self._get_log_dir(pilot_id)
             self._write_line(log_dir / "cpdlc_backend.log", line)
@@ -54,18 +57,22 @@ class LogManager:
             "timeLeft": time_left
         }
         line = f"[{timestamp}] [ACTION    ] {json.dumps(log_data, ensure_ascii=False)}\n"
-        print(line.strip())
+        msg = message.replace('"', '\\"')
+        time_str = f" timeLeft={time_left}" if time_left is not None else ""
+        console_line = f"[{timestamp}] ACTION {action_type} status={status} msg=\"{msg}\"{time_str}"
+        print(console_line)
         if self.enabled:
             log_dir = self._get_log_dir(pilot_id)
             self._write_line(log_dir / "cpdlc_backend.log", line)
 
 
     def log_error(self, pilot_id: str, context: str, error: Exception | str, time_left=None):
-        timestamp = get_current_timestamp()
+        timestamp = get_formatted_time(get_current_timestamp())
         error_msg = str(error)
-        extra = f" [timeLeft={time_left}s]" if time_left is not None else ""
+        extra = f" timeLeft={time_left}" if time_left is not None else ""
         line = f"[{timestamp}] [ERROR     ] [{context}]{extra} {error_msg}\n"
-        print(line.strip())
+        console_line = f"[{timestamp}] ERROR {context} msg=\"{error_msg}\"{extra}"
+        print(console_line)
         if self.enabled:
             log_dir = self._get_log_dir(pilot_id)
             self._write_line(log_dir / "cpdlc_errors.log", line)

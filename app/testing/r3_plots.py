@@ -2,7 +2,7 @@ import json
 import os
 
 
-def _load_r1(results_dir: str) -> list[dict]:
+def _load_r3(results_dir: str) -> list[dict]:
     items = []
     if not os.path.isdir(results_dir):
         return items
@@ -14,7 +14,7 @@ def _load_r1(results_dir: str) -> list[dict]:
             try:
                 with open(path, "r", encoding="ascii") as f:
                     data = json.load(f)
-                if data.get("test_id") == "R1_capacity":
+                if data.get("test_id") == "R3_capacity":
                     data["_path"] = path
                     items.append(data)
             except Exception:
@@ -35,7 +35,7 @@ def _extract_points(items: list[dict]) -> list[dict]:
         p95 = end.get("p95")
         srv_p95 = server.get("p95")
         if atc is None or pilots is None or p50 is None or p95 is None or srv_p95 is None:
-            print(f"Skipping incomplete R1 result: {item.get('_path')}")
+            print(f"Skipping incomplete R3 result: {item.get('_path')}")
             continue
         total = int(atc) + int(pilots)
         points.append({
@@ -65,11 +65,11 @@ def _plot_latency(points: list[dict], plot_dir: str) -> None:
                      ha="center", fontsize=8)
     plt.xlabel("Total clients (atc, pilots)", fontsize=12)
     plt.ylabel("End-to-end latency (ms)", fontsize=12)
-    plt.title("R1 Max Capacity Test End-to-End Latency", fontsize=14)
+    plt.title("R3 Max Capacity Test End-to-End Latency", fontsize=14)
     plt.grid(True, linestyle="--", linewidth=0.6, alpha=0.5)
     plt.legend(fontsize=11)
     plt.tight_layout()
-    plt.savefig(os.path.join(plot_dir, "R1_latency_vs_load.png"), dpi=200)
+    plt.savefig(os.path.join(plot_dir, "R3_latency_vs_load.png"), dpi=200)
 
 def _plot_server(points: list[dict], plot_dir: str) -> None:
     import matplotlib.pyplot as plt
@@ -84,24 +84,24 @@ def _plot_server(points: list[dict], plot_dir: str) -> None:
                      ha="center", fontsize=8)
     plt.xlabel("Total clients (atc, pilots)", fontsize=12)
     plt.ylabel("Server processing latency (ms)", fontsize=12)
-    plt.title("R1 Max Capacity Test Server Processing Latency", fontsize=14)
+    plt.title("R3 Max Capacity Test Server Processing Latency", fontsize=14)
     plt.grid(True, linestyle="--", linewidth=0.6, alpha=0.5)
     plt.legend(fontsize=11)
     plt.tight_layout()
-    plt.savefig(os.path.join(plot_dir, "R1_server_processing_vs_load.png"), dpi=200)
+    plt.savefig(os.path.join(plot_dir, "R3_server_processing_vs_load.png"), dpi=200)
 
 
 def main() -> None:
-    root = os.path.join("app", "testing", "results", "R1")
+    root = os.path.join("app", "testing", "results", "R3")
     plot_dir = os.path.join(root, "plots")
     os.makedirs(plot_dir, exist_ok=True)
-    items = _load_r1(root)
+    items = _load_r3(root)
     if not items:
-        print("No R1_capacity results found. Cannot plot.")
+        print("No R3_capacity results found. Cannot plot.")
         return
     points = _extract_points(items)
     if not points:
-        print("No complete R1_capacity results found. Cannot plot.")
+        print("No complete R3_capacity results found. Cannot plot.")
         return
     _plot_latency(points, plot_dir)
     _plot_server(points, plot_dir)

@@ -28,7 +28,7 @@ def _plot(history: dict, out_path: str) -> bool:
     plt.bar(labels, values, color="#4c72b0")
     plt.axhline(0, color="#444444", linewidth=1)
     plt.ylabel("History length (completed interactions)")
-    plt.title("R3 – Pilot State Consistency")
+    plt.title("R2 – Pilot State Consistency")
     plt.gca().yaxis.set_major_locator(plt.MaxNLocator(integer=True))
     plt.tight_layout()
     plt.savefig(out_path, dpi=200, bbox_inches="tight")
@@ -54,33 +54,33 @@ def _find_latest_r3(root: str) -> str | None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Plot R3 history lengths from test_results.json")
-    parser.add_argument("--path", help="Path to R3 test_results.json (optional)")
-    parser.add_argument("--root", default="app/testing/results/R3",
-                        help="Root folder to search for latest R3 result (default: app/testing/results/R3)")
+    parser = argparse.ArgumentParser(description="Plot R2 history lengths from test_results.json")
+    parser.add_argument("--path", help="Path to R2 test_results.json (optional)")
+    parser.add_argument("--root", default="app/testing/results/R2",
+                        help="Root folder to search for latest R2 result (default: app/testing/results/R2)")
     args = parser.parse_args()
 
     target = args.path
     if not target:
         target = _find_latest_r3(args.root)
         if not target:
-            print(f"[R3] No test_results.json found under {args.root}")
+            print(f"[R2] No test_results.json found under {args.root}")
             return
-        print(f"[R3] Using latest result: {target}")
+        print(f"[R2] Using latest result: {target}")
 
     payload = _load(target)
     history = _get_history(payload)
     if not history:
-        print("[R3] Missing history_lengths in test_results.json")
+        print("[R2] Missing history_lengths in test_results.json")
         return
-    test_id = payload.get("test_id", "R3_correctness")
+    test_id = payload.get("test_id", "R2_correctness")
     out_dir = os.path.dirname(os.path.abspath(target))
     out_name = f"{test_id}_history_lengths.png"
     out_path = os.path.join(out_dir, out_name)
     if not _plot(history, out_path):
-        print("[R3] Plotting failed: matplotlib not available")
+        print("[R2] Plotting failed: matplotlib not available")
         return
-    print(f"[R3] Plot saved: {out_path}")
+    print(f"[R2] Plot saved: {out_path}")
 
 
 if __name__ == "__main__":

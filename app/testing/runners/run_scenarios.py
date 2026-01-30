@@ -49,12 +49,15 @@ def _merge_state(best_counts: dict | None, best_history: dict | None, last: dict
 def run_once(server: str, atc_count: int, pilot_count: int,
              duration: float, interval: float, pilot_prefix: str,
              poll_interval: float, connect_barrier: bool = False,
-             connect_timeout: float = 10.0) -> dict:
+             connect_timeout: float = 10.0, record_snapshots: bool = False) -> dict:
     metrics_start = fetch_json(f"{server}/testing/metrics")
     threads = []
+    pilot_clients = []
     start_event = threading.Event() if connect_barrier else None
     for i in range(pilot_count):
-        client = SystemLoadClient("pilot", server, interval, duration, start_event=start_event)
+        client = SystemLoadClient("pilot", server, interval, duration, start_event=start_event,
+                                  client_id=f"{pilot_prefix}{i}")
+        pilot_clients.append(client)
         t = threading.Thread(target=client.start, daemon=True)
         threads.append(t)
         t.start()
@@ -68,10 +71,13 @@ def run_once(server: str, atc_count: int, pilot_count: int,
     last_state = None
     best_state = None
     best_history_state = None
+    snapshots = []
     initial_state = fetch_json(f"{server}/testing/state")
     last_state = initial_state
     best_state = _pick_better_state(best_state, initial_state)
     best_history_state = _pick_better_history(best_history_state, initial_state)
+    if record_snapshots:
+        snapshots.append(initial_state)
     if connect_barrier and start_event:
         deadline = time.time() + max(connect_timeout, 0.0)
         while time.time() < deadline:
@@ -79,6 +85,8 @@ def run_once(server: str, atc_count: int, pilot_count: int,
             last_state = state
             best_state = _pick_better_state(best_state, state)
             best_history_state = _pick_better_history(best_history_state, state)
+            if record_snapshots:
+                snapshots.append(state)
             if state.get("pilot_count") == pilot_count and state.get("atc_count") == atc_count:
                 break
             time.sleep(0.2)
@@ -94,6 +102,8 @@ def run_once(server: str, atc_count: int, pilot_count: int,
             last_state = state
             best_state = _pick_better_state(best_state, state)
             best_history_state = _pick_better_history(best_history_state, state)
+            if record_snapshots:
+                snapshots.append(state)
             if state.get("validation_issues"):
                 issues.extend(state["validation_issues"])
             time.sleep(poll_interval)
@@ -109,9 +119,13 @@ def run_once(server: str, atc_count: int, pilot_count: int,
         "delivered_counts": _diff_dict(metrics_start.get("delivered_counts", {}),
                                        metrics_end.get("delivered_counts", {})),
     }
-    return {
+    result = {
         "metrics": metrics_end,
         "metrics_delta": metrics_delta,
         "state_summary": state,
         "polled_issues": issues,
     }
+    if record_snapshots:
+        result["snapshots"] = snapshots
+        result["client_stats"] = {"pilots": [c.stats() for c in pilot_clients]}
+    return result
