@@ -24,13 +24,18 @@ class SystemLoadClient:
                     atc_index: int = 0,
                     atc_total: int = 1, 
                     start_event: threading.Event | None = None,
-                    client_id: str | None = None
+                    client_id: str | None = None,
+                    allow_reconnect: bool = False,
+                    max_reconnects: int = 2
                  ) -> None:
         self.role = role
         self.server_url = server_url
         self.interval_s = interval_s
         self.duration_s = duration_s
-        # Keep load tests deterministic; reconnections create extra sessions.
+        # Keep load tests deterministic by default; reconnections are opt-in.
+        self._allow_reconnect = allow_reconnect
+        self._max_reconnects = max(0, max_reconnects)
+        self._reconnect_attempts = 0
         self._sio = socketio.Client(
             reconnection=False,
             logger=False,
@@ -138,15 +143,27 @@ class SystemLoadClient:
     def start(self) -> None:
         auth = {"r": 0} if self.role == ROLE_PILOT else {"r": 1}
         try:
-            self._sio.connect(self.server_url, transports=["polling"], auth=auth)
+            self._sio.connect(self.server_url, transports=["websocket", "polling"], auth=auth)
         except Exception:
             return
         if self.role == ROLE_ATC:
             self._safe_emit("getPilotList", None)
         if self._start_event:
             self._start_event.wait()
-        end_ts = time.time() + self.duration_s
-        while time.time() < end_ts:
+        end_ts = time.monotonic() + self.duration_s
+        while time.monotonic() < end_ts:
+            if not self._sio.connected:
+                if not self._allow_reconnect or self._reconnect_attempts >= self._max_reconnects:
+                    break
+                self._reconnect_attempts += 1
+                try:
+                    self._sio.connect(self.server_url, transports=["websocket", "polling"], auth=auth)
+                    if self.role == ROLE_ATC:
+                        self._safe_emit("getPilotList", None)
+                        self._last_pilot_list_ts = time.time()
+                except Exception:
+                    time.sleep(0.5)
+                    continue
             self._pilot_tick() if self.role == ROLE_PILOT else self._atc_tick()
             time.sleep(self.interval_s)
         self._sio.disconnect()
@@ -158,9 +175,9 @@ class SystemLoadClient:
                 payload["client_tag"] = self._client_id
             self._safe_emit("sendRequest", payload)
             self._phase = PHASE_PENDING
-            self._last_send_ts = time.time()
+            self._last_send_ts = time.monotonic()
             return
-        if self._phase == PHASE_PENDING and time.time() - self._last_send_ts > 90.0:
+        if self._phase == PHASE_PENDING and time.monotonic() - self._last_send_ts > 90.0:
             self._phase = PHASE_IDLE
     
     def _atc_tick(self) -> None:

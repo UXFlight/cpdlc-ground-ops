@@ -80,7 +80,17 @@ def run_once(server: str, atc_count: int, pilot_count: int,
         t.start()
     time.sleep(1.0)
     for i in range(atc_count):
-        client = SystemLoadClient("atc", server, interval, duration, i, atc_count, start_event=start_event)
+        client = SystemLoadClient(
+            "atc",
+            server,
+            interval,
+            duration,
+            i,
+            atc_count,
+            start_event=start_event,
+            allow_reconnect=True,
+            max_reconnects=3,
+        )
         t = threading.Thread(target=client.start, daemon=True)
         threads.append(t)
         t.start()
