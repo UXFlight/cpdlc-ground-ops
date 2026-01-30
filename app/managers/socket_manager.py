@@ -1,4 +1,3 @@
-import uuid
 from flask import request  # type: ignore
 from typing import TYPE_CHECKING, Optional
 from app.utils.constants import TIMER_DURATION

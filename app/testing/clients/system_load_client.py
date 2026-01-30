@@ -12,6 +12,8 @@ PHASE_REQUESTED = "requested"
 PHASE_ACTION_SENT = "action_sent"
 ACTION_WILCO = "wilco" if "wilco" in ACTION_DEFINITIONS else "wilco"
 ACTION_AFFIRM = "affirm"
+ATC_BATCH = 5
+ATC_REFRESH_S = 2.0
 
 class SystemLoadClient:
     def __init__(self, 
@@ -48,6 +50,7 @@ class SystemLoadClient:
         self.request_acks = 0
         self.atc_responses = 0
         self.action_acks = 0
+        self._last_pilot_list_ts = 0.0
 
         @self._sio.on("requestAcknowledged")
         def _request_ack(data):
@@ -62,7 +65,8 @@ class SystemLoadClient:
         @self._sio.on("new_request")
         def _new_request(data):
             if self.role != ROLE_ATC: return
-            if data.get("status") != StepStatus.NEW.value: return
+            if data.get("status") not in {StepStatus.NEW.value, StepStatus.REQUESTED.value}:
+                return
             sid = data.get("pilot_sid")
             if self._atc_total > 1 and sid:
                 if sum(ord(c) for c in sid) % self._atc_total != self._atc_index:
@@ -82,7 +86,7 @@ class SystemLoadClient:
                         continue
                 for code, step in (pilot.get("steps") or {}).items():
                     status = step.get("status")
-                    if status == StepStatus.NEW.value:
+                    if status in {StepStatus.NEW.value, StepStatus.REQUESTED.value}:
                         req_id = step.get("request_id")
                         if sid and req_id:
                             item = {"pilot_sid": sid, "step_code": code, "request_id": req_id,
@@ -129,6 +133,7 @@ class SystemLoadClient:
         def connect():
             if self.role == ROLE_ATC:
                 self._safe_emit("getPilotList", None)
+                self._last_pilot_list_ts = time.time()
 
     def start(self) -> None:
         auth = {"r": 0} if self.role == ROLE_PILOT else {"r": 1}
@@ -159,14 +164,20 @@ class SystemLoadClient:
             self._phase = PHASE_IDLE
     
     def _atc_tick(self) -> None:
-        item = None
-        with self._queue_lock:
-            if self._queue: item = self._queue.pop(0)
-        if not item: return
-        sid = item.get("pilot_sid")
-        payload = {"pilot_sid": sid, "step_code": item.get("step_code"), "request_id": item.get("request_id"),
-                   "action": ACTION_AFFIRM, "message": "ack", "client_sent_ts": time.time()}
-        self._safe_emit("atcResponse", payload)
+        now = time.time()
+        if now - self._last_pilot_list_ts >= ATC_REFRESH_S:
+            self._safe_emit("getPilotList", None)
+            self._last_pilot_list_ts = now
+        for _ in range(ATC_BATCH):
+            item = None
+            with self._queue_lock:
+                if self._queue: item = self._queue.pop(0)
+            if not item:
+                return
+            sid = item.get("pilot_sid")
+            payload = {"pilot_sid": sid, "step_code": item.get("step_code"), "request_id": item.get("request_id"),
+                       "action": ACTION_AFFIRM, "message": "ack", "client_sent_ts": time.time()}
+            self._safe_emit("atcResponse", payload)
     
     def _queue_key(self, item: dict) -> tuple: return (item.get("pilot_sid"), item.get("step_code"),
                                                        item.get("validated_at"), item.get("request_id"), item.get("status"))
