@@ -31,39 +31,23 @@ class LogManager:
 
     def log_request(self, pilot_id: str, request_type: str, status: str, message: str = "", time_left=None):
         timestamp = get_formatted_time(get_current_timestamp())
-        log_data = {
-            "timestamp": timestamp,
-            "type": request_type,
-            "status": status,
-            "message": message,
-            "timeLeft": time_left if time_left is not None else None
-        }
-        line = f"[{timestamp}] [REQUEST   ] {json.dumps(log_data, ensure_ascii=False)}\n"
         msg = message.replace('"', '\\"')
         time_str = f" timeLeft={time_left}" if time_left is not None else ""
-        console_line = f"[{timestamp}] REQUEST {request_type} status={status} msg=\"{msg}\"{time_str}"
+        console_line = f"[{timestamp}] {'REQUEST':<10} {request_type} status={status} msg=\"{msg}\"{time_str}"
         print(console_line)
         if self.enabled:
             log_dir = self._get_log_dir(pilot_id)
-            self._write_line(log_dir / "cpdlc_backend.log", line)
+            self._write_line(log_dir / "cpdlc_backend.log", console_line)
 
     def log_action(self, pilot_id: str, action_type: str, status: str, message: str = "", time_left=None):
         timestamp = get_formatted_time(get_current_timestamp())
-        log_data = {
-            "timestamp": timestamp,
-            "action": action_type,
-            "status": status,
-            "message": message,
-            "timeLeft": time_left
-        }
-        line = f"[{timestamp}] [ACTION    ] {json.dumps(log_data, ensure_ascii=False)}\n"
         msg = message.replace('"', '\\"')
         time_str = f" timeLeft={time_left}" if time_left is not None else ""
-        console_line = f"[{timestamp}] ACTION {action_type} status={status} msg=\"{msg}\"{time_str}"
+        console_line = f"[{timestamp}] {'ACTION':<10} {action_type} status={status} msg=\"{msg}\"{time_str}"
         print(console_line)
         if self.enabled:
             log_dir = self._get_log_dir(pilot_id)
-            self._write_line(log_dir / "cpdlc_backend.log", line)
+            self._write_line(log_dir / "cpdlc_backend.log", console_line)
 
 
     def log_error(self, pilot_id: str, context: str, error: Exception | str, time_left=None):
@@ -91,4 +75,4 @@ class LogManager:
 logger = LogManager()
 if os.getenv("CPDLC_DISABLE_LOGS") == "1":
     logger.enabled = False
-    print("[LOGGING] CPDLC_DISABLE_LOGS=1, logging disabled.")
+    logger.log_event('SYSTEM', "LOGGING", "CPDLC_DISABLE_LOGS=1, logging disabled.")

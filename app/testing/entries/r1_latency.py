@@ -46,6 +46,8 @@ def main() -> None:
     parser.add_argument("--interval", type=float, default=1.0)
     parser.add_argument("--pilot-prefix", default="pilot-")
     parser.add_argument("--poll-interval", type=float, default=0.0)
+    parser.add_argument("--allow-dirty", action="store_true",
+                        help="Allow pre-existing pilots/ATCs before starting the test")
     parser.add_argument("--outdir", default="app/testing/results")
     parser.add_argument("--sweep", action="store_true", help="Run R1 sweep over fixed intervals")
     args = parser.parse_args()
@@ -53,7 +55,8 @@ def main() -> None:
     _log_context(args.server)
     if not args.sweep:
         result = run_once(args.server, args.atc, args.pilots, args.duration,
-                          args.interval, args.pilot_prefix, args.poll_interval)
+                          args.interval, args.pilot_prefix, args.poll_interval,
+                          require_clean_start=not args.allow_dirty)
         path = _write_result(args.outdir, "R1_latency", vars(args), result)
         print(f"[RESULT] {path}")
         return
@@ -65,7 +68,8 @@ def main() -> None:
         params = vars(args) | {"atc": SWEEP_ATC, "pilots": SWEEP_PILOTS,
                                "duration": SWEEP_DURATION, "interval": interval}
         result = run_once(args.server, SWEEP_ATC, SWEEP_PILOTS, SWEEP_DURATION,
-                          interval, args.pilot_prefix, args.poll_interval)
+                          interval, args.pilot_prefix, args.poll_interval,
+                          require_clean_start=not args.allow_dirty)
         path = _write_result(args.outdir, "R1_latency", params, result)
         rows.append({"interval": interval, "params": params, "result": result, "path": path})
         metrics = result.get("metrics", {})

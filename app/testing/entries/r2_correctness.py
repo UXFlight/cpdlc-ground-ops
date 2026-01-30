@@ -25,7 +25,7 @@ def _write_result(outdir: str, test_id: str, params: dict, result: dict) -> str:
     return path
 
 
-def _validate_r3(result: dict, params: dict) -> dict:
+def _validate_r2(result: dict, params: dict) -> dict:
     expected_pilots = int(params.get("pilots") or 0)
     expected_atc = int(params.get("atc") or 0)
     min_cycles = int(params.get("min_cycles") or 3)
@@ -107,8 +107,21 @@ def _validate_r3(result: dict, params: dict) -> dict:
     }
 
 
-def _print_validation(summary: dict) -> None:
+def _print_validation(summary: dict, params: dict, result: dict) -> None:
     checks = summary.get("checks", {})
+    expected_pilots = int(params.get("pilots") or 0)
+    expected_atc = int(params.get("atc") or 0)
+    state = result.get("state_summary", {}) or {}
+    observed_pilots = int(state.get("pilot_count") or 0)
+    observed_atc = int(state.get("atc_count") or 0)
+    progress = summary.get("per_pilot_progress", {}) or {}
+    min_cycles = summary.get("min_cycles_required", 0)
+    if progress:
+        min_done = min(progress.values())
+        max_done = max(progress.values())
+    else:
+        min_done = 0
+        max_done = 0
     for name in [
         "population_integrity",
         "per_pilot_isolation",
@@ -119,6 +132,9 @@ def _print_validation(summary: dict) -> None:
     ]:
         status = "PASS" if checks.get(name) else "FAIL"
         print(f"[R2] {name}: {status}")
+    print(f"[R2] expected pilots/atc: {expected_pilots}/{expected_atc}")
+    print(f"[R2] observed pilots/atc: {observed_pilots}/{observed_atc}")
+    print(f"[R2] cycles min/req/max: {min_done}/{min_cycles}/{max_done}")
     result = "PASS" if summary.get("pass") else "FAIL"
     print(f"[R2] Overall: {result}")
     if summary.get("pass"):
@@ -139,17 +155,22 @@ def main() -> None:
     parser.add_argument("--poll-interval", type=float, default=1.0)
     parser.add_argument("--min-cycles", type=int, default=3)
     parser.add_argument("--connect-timeout", type=float, default=15.0)
+    parser.add_argument("--teardown-grace", type=float, default=2.0,
+                        help="Stop polling before teardown to avoid disconnect snapshots")
+    parser.add_argument("--allow-dirty", action="store_true",
+                        help="Allow pre-existing pilots/ATCs before starting the test")
     parser.add_argument("--outdir", default="app/testing/results")
     args = parser.parse_args()
 
     result = run_once(args.server, args.atc, args.pilots, args.duration,
                       args.interval, args.pilot_prefix, args.poll_interval,
                       connect_barrier=True, connect_timeout=args.connect_timeout,
-                      record_snapshots=True)
-    validation = _validate_r3(result, vars(args))
+                      record_snapshots=True, poll_end_offset=args.teardown_grace,
+                      require_clean_start=not args.allow_dirty)
+    validation = _validate_r2(result, vars(args))
     result["r3_validation"] = validation
     path = _write_result(args.outdir, "R2_correctness", vars(args), result)
-    _print_validation(validation)
+    _print_validation(validation, vars(args), result)
     print(f"[RESULT] {path}")
 
 

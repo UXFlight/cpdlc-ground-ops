@@ -34,11 +34,14 @@ def main() -> None:
     parser.add_argument("--interval", type=float, default=0.1)
     parser.add_argument("--pilot-prefix", default="pilot-")
     parser.add_argument("--poll-interval", type=float, default=1.0)
+    parser.add_argument("--allow-dirty", action="store_true",
+                        help="Allow pre-existing pilots/ATCs before starting the test")
     parser.add_argument("--outdir", default="app/testing/results")
     args = parser.parse_args()
 
     result = run_once(args.server, args.atc, args.pilots, args.duration,
-                      args.interval, args.pilot_prefix, args.poll_interval)
+                      args.interval, args.pilot_prefix, args.poll_interval,
+                      require_clean_start=not args.allow_dirty)
     path = _write_result(args.outdir, "R4_overload", vars(args), result)
     print(f"[RESULT] {path}")
 

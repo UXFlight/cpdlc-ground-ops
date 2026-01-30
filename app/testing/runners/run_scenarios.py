@@ -49,8 +49,25 @@ def _merge_state(best_counts: dict | None, best_history: dict | None, last: dict
 def run_once(server: str, atc_count: int, pilot_count: int,
              duration: float, interval: float, pilot_prefix: str,
              poll_interval: float, connect_barrier: bool = False,
-             connect_timeout: float = 10.0, record_snapshots: bool = False) -> dict:
+             connect_timeout: float = 10.0, record_snapshots: bool = False,
+             poll_end_offset: float = 0.0, require_clean_start: bool = True) -> dict:
     metrics_start = fetch_json(f"{server}/testing/metrics")
+    if require_clean_start:
+        pre_state = fetch_json(f"{server}/testing/state")
+        if (pre_state.get("pilot_count", 0) or 0) > 0 or (pre_state.get("atc_count", 0) or 0) > 0:
+            return {
+                "metrics": metrics_start,
+                "metrics_delta": {
+                    "total_messages": 0,
+                    "total_errors": 0,
+                    "role_counts": {},
+                    "delivered_counts": {},
+                },
+                "state_summary": pre_state,
+                "polled_issues": [f"dirty_start:pilots={pre_state.get('pilot_count', 0)}",
+                                  f"dirty_start_atc={pre_state.get('atc_count', 0)}"],
+                "error": "dirty_start",
+            }
     threads = []
     pilot_clients = []
     start_event = threading.Event() if connect_barrier else None
@@ -96,7 +113,7 @@ def run_once(server: str, atc_count: int, pilot_count: int,
             issues.append(f"connect_shortfall_atc:{(last_state or {}).get('atc_count', 0)}/{atc_count}")
         start_event.set()
     if poll_interval > 0:
-        end_ts = time.time() + duration
+        end_ts = time.time() + max(0.0, duration - max(poll_end_offset, 0.0))
         while time.time() < end_ts:
             state = fetch_json(f"{server}/testing/state")
             last_state = state

@@ -28,7 +28,14 @@ class SystemLoadClient:
         self.server_url = server_url
         self.interval_s = interval_s
         self.duration_s = duration_s
-        self._sio = socketio.Client(reconnection=False, logger=False, engineio_logger=False)
+        self._sio = socketio.Client(
+            reconnection=True,
+            reconnection_attempts=5,
+            reconnection_delay=1,
+            reconnection_delay_max=5,
+            logger=False,
+            engineio_logger=False,
+        )
         self._queue = []
         self._queue_lock = threading.Lock()
         self._phase = PHASE_IDLE
@@ -112,6 +119,11 @@ class SystemLoadClient:
                 self._phase = PHASE_REQUESTED
             elif self._phase == PHASE_PENDING:
                 self._phase = PHASE_IDLE
+
+        @self._sio.event
+        def connect():
+            if self.role == ROLE_ATC:
+                self._safe_emit("getPilotList", None)
 
     def start(self) -> None:
         auth = {"r": 0} if self.role == ROLE_PILOT else {"r": 1}
