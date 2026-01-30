@@ -1,3 +1,9 @@
+try:
+    import eventlet  # type: ignore
+    eventlet.monkey_patch()
+except Exception:
+    eventlet = None
+
 import threading
 import signal
 import sys
@@ -19,7 +25,13 @@ def create_app():
     mimetypes.add_type('application/javascript', '.js')
     app = Flask(__name__, static_url_path="/static", static_folder="static")
     CORS(app)
-    socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
+    async_mode = "eventlet" if eventlet else "threading"
+    socketio = SocketIO(
+        app,
+        cors_allowed_origins="*",
+        async_mode=async_mode,
+        transports=["websocket"],
+    )
     return app, socketio
 
 def signal_handler(sig, frame):
@@ -64,6 +76,7 @@ if __name__ == '__main__':
         host = "0.0.0.0"
         port = 5321
         print(f"[SERVER] Server running at http://localhost:{port}")
-        socketio.run(app, host="0.0.0.0", port=5321, use_reloader=False, allow_unsafe_werkzeug=True)
+        allow_unsafe = socketio.async_mode == "threading"
+        socketio.run(app, host="0.0.0.0", port=5321, use_reloader=False, allow_unsafe_werkzeug=allow_unsafe)
     except KeyboardInterrupt:
         pass
