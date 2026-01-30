@@ -90,6 +90,7 @@ def run_once(server: str, atc_count: int, pilot_count: int,
             start_event=start_event,
             allow_reconnect=True,
             max_reconnects=3,
+            allow_polling=False,
         )
         t = threading.Thread(target=client.start, daemon=True)
         threads.append(t)

@@ -26,7 +26,8 @@ class SystemLoadClient:
                     start_event: threading.Event | None = None,
                     client_id: str | None = None,
                     allow_reconnect: bool = False,
-                    max_reconnects: int = 2
+                    max_reconnects: int = 2,
+                    allow_polling: bool = False
                  ) -> None:
         self.role = role
         self.server_url = server_url
@@ -36,6 +37,7 @@ class SystemLoadClient:
         self._allow_reconnect = allow_reconnect
         self._max_reconnects = max(0, max_reconnects)
         self._reconnect_attempts = 0
+        self._allow_polling = allow_polling
         self._sio = socketio.Client(
             reconnection=False,
             logger=False,
@@ -143,9 +145,15 @@ class SystemLoadClient:
     def start(self) -> None:
         auth = {"r": 0} if self.role == ROLE_PILOT else {"r": 1}
         try:
-            self._sio.connect(self.server_url, transports=["websocket", "polling"], auth=auth)
+            self._sio.connect(self.server_url, transports=["websocket"], auth=auth)
         except Exception:
-            return
+            if self._allow_polling:
+                try:
+                    self._sio.connect(self.server_url, transports=["polling"], auth=auth)
+                except Exception:
+                    return
+            else:
+                return
         if self.role == ROLE_ATC:
             self._safe_emit("getPilotList", None)
         if self._start_event:
@@ -157,13 +165,23 @@ class SystemLoadClient:
                     break
                 self._reconnect_attempts += 1
                 try:
-                    self._sio.connect(self.server_url, transports=["websocket", "polling"], auth=auth)
+                    self._sio.connect(self.server_url, transports=["websocket"], auth=auth)
                     if self.role == ROLE_ATC:
                         self._safe_emit("getPilotList", None)
                         self._last_pilot_list_ts = time.time()
                 except Exception:
-                    time.sleep(0.5)
-                    continue
+                    if self._allow_polling:
+                        try:
+                            self._sio.connect(self.server_url, transports=["polling"], auth=auth)
+                            if self.role == ROLE_ATC:
+                                self._safe_emit("getPilotList", None)
+                                self._last_pilot_list_ts = time.time()
+                        except Exception:
+                            time.sleep(0.5)
+                            continue
+                    else:
+                        time.sleep(0.5)
+                        continue
             self._pilot_tick() if self.role == ROLE_PILOT else self._atc_tick()
             time.sleep(self.interval_s)
         self._sio.disconnect()
