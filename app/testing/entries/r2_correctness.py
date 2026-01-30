@@ -116,12 +116,18 @@ def _print_validation(summary: dict, params: dict, result: dict) -> None:
     observed_atc = int(state.get("atc_count") or 0)
     progress = summary.get("per_pilot_progress", {}) or {}
     min_cycles = summary.get("min_cycles_required", 0)
+    metrics = result.get("metrics", {}) or {}
+    metrics_delta = result.get("metrics_delta", {}) or {}
+    validation_issues = state.get("validation_issues", []) or []
+    polled_issues = result.get("polled_issues", []) or []
+    unexpected = summary.get("unexpected_events", {}) or {}
     if progress:
         min_done = min(progress.values())
         max_done = max(progress.values())
     else:
         min_done = 0
         max_done = 0
+    below_min = [k for k, v in progress.items() if v < min_cycles]
     for name in [
         "population_integrity",
         "per_pilot_isolation",
@@ -135,6 +141,12 @@ def _print_validation(summary: dict, params: dict, result: dict) -> None:
     print(f"[R2] expected pilots/atc: {expected_pilots}/{expected_atc}")
     print(f"[R2] observed pilots/atc: {observed_pilots}/{observed_atc}")
     print(f"[R2] cycles min/req/max: {min_done}/{min_cycles}/{max_done}")
+    print(f"[R2] pilots below min_cycles: {len(below_min)}")
+    print(f"[R2] validation_issues: {len(validation_issues)}")
+    print(f"[R2] polled_issues: {len(polled_issues)}")
+    print(f"[R2] unexpected_events: {sum(len(v) for v in unexpected.values())}")
+    print(f"[R2] total_errors (delta): {metrics_delta.get('total_errors', 0)}")
+    print(f"[R2] total_messages (delta): {metrics_delta.get('total_messages', 0)}")
     result = "PASS" if summary.get("pass") else "FAIL"
     print(f"[R2] Overall: {result}")
     if summary.get("pass"):
