@@ -9,6 +9,7 @@ import { closeOverlay } from "../events/overlay.js";
 import { speak } from "../text-to-speech.js/speech.js";
 import { enableButtonsByStatus } from "../ui/buttons-ui.js";
 import { SELECTORS } from "../consts/cssConsts.js";
+import { updateDirection } from "../state/state.js";
 
 export const handleAtcResponse = (data) => {
     const {
@@ -17,6 +18,8 @@ export const handleAtcResponse = (data) => {
         message,
         timestamp,
         time_left,
+        label,
+        direction,
     } = data
 
     const cancelBtn = document.querySelector(SELECTORS.CANCEL_BUTTON_BY_REQUESTTYPE(step_code));
@@ -24,8 +27,8 @@ export const handleAtcResponse = (data) => {
 
     closeOverlay(step_code);
 
-    updateStep(step_code, status, message, timestamp, time_left);
-
+    updateStep(step_code, status, message, timestamp, time_left, label);
+    if (step_code === REQUEST_TYPE.PUSHBACK && direction) updateDirection(String(direction).toLowerCase());
     if (checkAutoLoad(step_code, status)) setTimeout(() => autoLoadAction(step_code), 200);
     if (getBool(CONFIG_KEYS.AUDIO)) speak(message);
     else playNotificationSound();
