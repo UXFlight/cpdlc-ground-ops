@@ -6,9 +6,19 @@ import urllib.request
 from ..clients.system_load_client import SystemLoadClient
 
 
-def fetch_json(url: str) -> dict:
-    with urllib.request.urlopen(url, timeout=5) as resp:
-        return json.loads(resp.read().decode("utf-8"))
+def fetch_json(url: str, timeout: float = 5.0, retries: int = 0, backoff_s: float = 0.5) -> dict:
+    last_err: Exception | None = None
+    for attempt in range(retries + 1):
+        try:
+            with urllib.request.urlopen(url, timeout=timeout) as resp:
+                return json.loads(resp.read().decode("utf-8"))
+        except Exception as err:
+            last_err = err
+            if attempt < retries:
+                time.sleep(backoff_s)
+                continue
+            raise
+    raise last_err or RuntimeError("fetch_json failed")
 
 
 def _diff_dict(start: dict, end: dict) -> dict:
@@ -50,10 +60,18 @@ def run_once(server: str, atc_count: int, pilot_count: int,
              duration: float, interval: float, pilot_prefix: str,
              poll_interval: float, connect_barrier: bool = False,
              connect_timeout: float = 10.0, record_snapshots: bool = False,
-             poll_end_offset: float = 0.0, require_clean_start: bool = True) -> dict:
-    metrics_start = fetch_json(f"{server}/testing/metrics")
+             poll_end_offset: float = 0.0, require_clean_start: bool = True,
+             http_timeout: float = 5.0, http_retries: int = 0) -> dict:
+    try:
+        metrics_start = fetch_json(f"{server}/testing/metrics", timeout=http_timeout, retries=http_retries)
+    except Exception as err:
+        metrics_start = {}
+        # Defer issues list creation; record in a temporary list for now.
+        bootstrap_issues = [f"metrics_start_fetch_failed:{type(err).__name__}"]
+    else:
+        bootstrap_issues = []
     if require_clean_start:
-        pre_state = fetch_json(f"{server}/testing/state")
+        pre_state = fetch_json(f"{server}/testing/state", timeout=http_timeout, retries=http_retries)
         if (pre_state.get("pilot_count", 0) or 0) > 0 or (pre_state.get("atc_count", 0) or 0) > 0:
             return {
                 "metrics": metrics_start,
@@ -95,12 +113,16 @@ def run_once(server: str, atc_count: int, pilot_count: int,
         t = threading.Thread(target=client.start, daemon=True)
         threads.append(t)
         t.start()
-    issues = []
+    issues = list(bootstrap_issues)
     last_state = None
     best_state = None
     best_history_state = None
     snapshots = []
-    initial_state = fetch_json(f"{server}/testing/state")
+    try:
+        initial_state = fetch_json(f"{server}/testing/state", timeout=http_timeout, retries=http_retries)
+    except Exception as err:
+        issues.append(f"state_fetch_failed_initial:{type(err).__name__}")
+        initial_state = {}
     last_state = initial_state
     best_state = _pick_better_state(best_state, initial_state)
     best_history_state = _pick_better_history(best_history_state, initial_state)
@@ -109,7 +131,12 @@ def run_once(server: str, atc_count: int, pilot_count: int,
     if connect_barrier and start_event:
         deadline = time.time() + max(connect_timeout, 0.0)
         while time.time() < deadline:
-            state = fetch_json(f"{server}/testing/state")
+            try:
+                state = fetch_json(f"{server}/testing/state", timeout=http_timeout, retries=http_retries)
+            except Exception as err:
+                issues.append(f"state_fetch_failed_connect:{type(err).__name__}")
+                time.sleep(0.2)
+                continue
             last_state = state
             best_state = _pick_better_state(best_state, state)
             best_history_state = _pick_better_history(best_history_state, state)
@@ -126,7 +153,12 @@ def run_once(server: str, atc_count: int, pilot_count: int,
     if poll_interval > 0:
         end_ts = time.time() + max(0.0, duration - max(poll_end_offset, 0.0))
         while time.time() < end_ts:
-            state = fetch_json(f"{server}/testing/state")
+            try:
+                state = fetch_json(f"{server}/testing/state", timeout=http_timeout, retries=http_retries)
+            except Exception as err:
+                issues.append(f"state_fetch_failed_poll:{type(err).__name__}")
+                time.sleep(poll_interval)
+                continue
             last_state = state
             best_state = _pick_better_state(best_state, state)
             best_history_state = _pick_better_history(best_history_state, state)
@@ -137,8 +169,17 @@ def run_once(server: str, atc_count: int, pilot_count: int,
             time.sleep(poll_interval)
     for t in threads:
         t.join()
-    metrics_end = fetch_json(f"{server}/testing/metrics")
-    state = _merge_state(best_state, best_history_state, last_state or fetch_json(f"{server}/testing/state"))
+    try:
+        metrics_end = fetch_json(f"{server}/testing/metrics", timeout=http_timeout, retries=http_retries)
+    except Exception as err:
+        issues.append(f"metrics_end_fetch_failed:{type(err).__name__}")
+        metrics_end = {}
+    try:
+        tail_state = fetch_json(f"{server}/testing/state", timeout=http_timeout, retries=http_retries)
+    except Exception as err:
+        issues.append(f"state_fetch_failed_tail:{type(err).__name__}")
+        tail_state = last_state or {}
+    state = _merge_state(best_state, best_history_state, last_state or tail_state)
     metrics_delta = {
         "total_messages": metrics_end.get("total_messages", 0) - metrics_start.get("total_messages", 0),
         "total_errors": metrics_end.get("total_errors", 0) - metrics_start.get("total_errors", 0),
