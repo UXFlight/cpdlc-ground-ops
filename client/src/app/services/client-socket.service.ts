@@ -20,7 +20,10 @@ export class ClientSocketService {
     connect() {
         if (!this.isSocketAlive()) {
             const url = `${environment.serverUrl}`;
-            this.socket = io(url, { auth: { r: ROLE_ATC} });
+            this.socket = io(url, {
+                auth: { r: ROLE_ATC },
+                transports: ['websocket'],
+            });
         }
     }
 
