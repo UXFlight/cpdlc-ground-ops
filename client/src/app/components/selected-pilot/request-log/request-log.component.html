@@ -28,7 +28,7 @@
         
               <div class="chips">
                 @for (resp of smartResponses; track resp) {
-                  <button type="button" class="chip" (click)="applySmart(resp, $event)">{{ resp }}</button>
+                  <button type="button" class="chip chip-smart" (click)="applySmart(resp, $event)">{{ resp }}</button>
                 }
               </div>
             }
@@ -38,7 +38,7 @@
             <div class="direction-buttons">
               <button 
                 type="button" 
-                class="chip"
+                class="chip chip-direction"
                 [class.selected]="selectedDirection === 'LEFT'"
                 (click)="selectDirection($event, 'LEFT')"
               >
@@ -46,7 +46,7 @@
               </button>
               <button 
                 type="button" 
-                class="chip"
+                class="chip chip-direction"
                 [class.selected]="selectedDirection === 'RIGHT'"
                 (click)="selectDirection($event, 'RIGHT')"
               >
@@ -61,7 +61,7 @@
                 @for (button of quickResponses; track button) {
                   <button 
                     type="button" 
-                    class="chip"
+                    class="chip chip-quick"
                     [class.selected]="selectedAction === button.toLowerCase()"
                     [disabled]="step.step_code === 'DM_131' && !selectedDirection"
                     (click)="setQuickResponse(button, $event)"
@@ -74,8 +74,10 @@
           }
 
           <!-- INPUT -->
-            <label for="response-input-{{ step.request_id }}"></label>
+          <div class="response-input-group">
+            <label class="input-label" for="response-input-{{ step.request_id }}">ATC RESPONSE</label>
             <textarea
+              class="response-textarea"
               id="response-input-{{ step.request_id }}"
               placeholder="Type your response..."
               [(ngModel)]="response"
@@ -83,6 +85,7 @@
               maxlength="500"
               (click)="$event.stopPropagation()"
             ></textarea>
+          </div>
       
           <!-- FOOTER -->
             <div class="response-footer">
@@ -97,21 +100,7 @@
                   class="send-btn" 
                   (click)="submitResponse($event)"
                 >
-                  <span>Send</span>
-                  <svg 
-                    class="send-icon" 
-                    xmlns="http://www.w3.org/2000/svg" 
-                    viewBox="0 0 176.368 176.368"
-                    width="14" height="14" 
-                    aria-hidden="true"
-                  >
-                    <path 
-                      fill-rule="evenodd" 
-                      d="M175.865 12.489c2.469-7.408-4.578-14.456-11.986-11.987L6.48 52.969c-8.839 2.946-8.565 15.542.393 18.101l76.552 21.873 21.872 76.552c2.56 8.959 15.155 9.233 18.101.393zm-12.34 7.055-49.116 147.348-21.83-76.403zm-6.701-6.701L85.879 83.788 9.477 61.959z" 
-                      clip-rule="evenodd" 
-                      fill="#e2e8f0"
-                    ></path>
-                  </svg>
+                  Transmit
                 </button>
               </div>
             </div>

@@ -72,7 +72,7 @@
     .smart-responses,
     .quick-responses {
       display: grid;
-      gap: .4rem;
+      gap: 0.4rem;
     }
 
     .smart-responses {
@@ -82,8 +82,7 @@
     .chips {
       display: flex;
       flex-wrap: wrap;
-      gap: .4rem;
-
+      gap: 0.4rem;
     }
 
     .direction-buttons {
@@ -91,104 +90,120 @@
       gap: 0.5rem;
     }
 
-    /* QUICK RESPONSES */
     .qa-buttons {
       display: flex;
       flex-wrap: wrap;
       gap: 0.5rem;
     }
 
+    .qa-buttons .chip,
+    .direction-buttons .chip {
+      flex: 1 1 0;
+    }
+
     .chip {
-      flex: 1;
-      background: var(--bg-body);
-      border: 1px solid var(--text-muted);
+      background: color-mix(in srgb, var(--bg-body) 92%, white 8%);
+      border: 1px solid color-mix(in srgb, var(--text-muted) 82%, black 18%);
       color: var(--text-primary);
-      padding: 0.85rem 1.1rem;
-      border-radius: 999px;
-      font-size: 0.9rem;
+      padding: 0.55rem 0.8rem;
+      border-radius: 6px;
+      font-size: 0.76rem;
       font-weight: 600;
-      font-family: 'Segoe UI', 'Roboto', sans-serif;
+      font-family: 'JetBrains Mono', 'Consolas', monospace;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
       line-height: 1.2;
       white-space: nowrap;
       cursor: pointer;
-      transition: 
-        background-color 0.2s ease,
-        border-color 0.2s ease,
-        color 0.2s ease,
-        box-shadow 0.2s ease;
-    
+
       display: inline-flex;
       align-items: center;
       justify-content: center;
-    
+
+      transition:
+        background-color 0.18s ease,
+        border-color 0.18s ease,
+        color 0.18s ease,
+        box-shadow 0.18s ease,
+        transform 0.08s ease;
+
       &:hover {
-        background-color: var(--bg-hover);
-        border-color: var(--color-responded);
-        box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-responded) 20%, transparent);
+        background: color-mix(in srgb, var(--bg-hover) 88%, white 12%);
+        border-color: color-mix(in srgb, var(--text-muted) 70%, white 30%);
       }
-    
+
       &:active {
-        background-color: var(--color-responded);
-        color: #fff;
-        border-color: var(--color-active);
-        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+        transform: translateY(1px);
       }
-    
+
       &:focus-visible {
-        outline: 2px solid var(--color-responded);
-        outline-offset: 3px;
+        outline: 1px solid color-mix(in srgb, var(--color-active) 65%, transparent);
+        outline-offset: 1px;
       }
-    
+
       &:disabled {
-        background-color: var(--text-muted);
+        background: color-mix(in srgb, var(--bg-inactive) 90%, black 10%);
         color: var(--text-secondary);
-        border-color: var(--text-muted);
+        border-color: color-mix(in srgb, var(--text-muted) 85%, black 15%);
         cursor: not-allowed;
         opacity: 0.6;
       }
     }
-    
+
     .chip.selected {
-      background-color: var(--bg-responded);
-      color: white;
-      border-color: var(--color-responded);
-      box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-responded) 25%, transparent);
-    
+      background: color-mix(in srgb, var(--bg-hover) 88%, white 12%);
+      border-color: color-mix(in srgb, var(--color-active) 45%, var(--text-muted));
+      color: var(--text-primary);
+      box-shadow: none;
+
       &:focus-visible {
-        outline: 2px solid var(--color-responded);
-        outline-offset: 3px;
+        outline: 1px solid color-mix(in srgb, var(--color-active) 65%, transparent);
+        outline-offset: 1px;
       }
     }
 
-    label {
-      font-size: 0.8rem;
-      color: var(--text-secondary);
+    .response-input-group {
+      display: grid;
+      gap: 0.35rem;
     }
 
-    textarea {
+    .input-label {
+      font-size: 0.68rem;
+      color: var(--text-secondary);
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', 'Consolas', monospace;
+    }
+
+    .response-textarea {
       resize: vertical;
-      min-height: 50px;
-      max-height: 180px;
-      padding: 0.6rem 0.75rem;
-      font-size: 1rem;
-      line-height: 1.4;
-      border: 1px solid var(--text-muted);
-      border-radius: 6px;
-      background-color: var(--bg-body);
+      min-height: 82px;
+      max-height: 220px;
+      padding: 0.65rem 0.75rem;
+      font-size: 0.9rem;
+      line-height: 1.45;
+      border: 1px solid color-mix(in srgb, var(--text-muted) 80%, black 20%);
+      border-radius: 2px;
+      background: linear-gradient(
+        180deg,
+        color-mix(in srgb, var(--bg-body) 90%, black 10%),
+        var(--bg-body)
+      );
       color: var(--text-primary);
-      font-family: inherit;
+      font-family: 'JetBrains Mono', 'Consolas', monospace;
       transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
-    
+
       &:focus {
         border-color: var(--color-active);
         outline: none;
-        box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-active) 20%, transparent);
+        box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-active) 35%, transparent);
       }
-    
+
       &::placeholder {
-        color: var(--text-secondary);
-        opacity: 0.8;
-        font-style: italic;
+        color: color-mix(in srgb, var(--text-secondary) 85%, black 15%);
+        opacity: 1;
+        font-style: normal;
       }
     }
 
@@ -198,80 +213,76 @@
       align-items: center;
       margin-top: 0.75rem;
       gap: 0.75rem;
-    
+
       .compose-hint {
-        font-size: 0.75rem;
-        font-style: italic;
+        font-size: 0.68rem;
+        font-family: 'JetBrains Mono', 'Consolas', monospace;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
         color: var(--text-secondary);
         white-space: nowrap;
       }
-    
+
       .right-side {
         display: flex;
         align-items: center;
         gap: 0.75rem;
-    
+
         .char-counter {
-          font-size: 0.75rem;
+          font-size: 0.68rem;
+          font-family: 'JetBrains Mono', 'Consolas', monospace;
           color: var(--text-secondary);
-          opacity: 0.85;
+          letter-spacing: 0.05em;
+          opacity: 0.9;
           white-space: nowrap;
         }
-    
+
         .send-btn {
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          background-color: var(--bg-body);
-          border: 1px solid var(--text-muted);
+          background: color-mix(in srgb, var(--bg-body) 92%, white 8%);
+          border: 1px solid color-mix(in srgb, var(--text-muted) 78%, black 22%);
           color: var(--text-primary);
-          padding: 0.5rem 1.2rem;
-          font-size: 0.75rem;
+          padding: 0.5rem 0.9rem;
+          font-size: 0.68rem;
           font-weight: 600;
-          font-family: inherit;
+          font-family: 'JetBrains Mono', 'Consolas', monospace;
           text-transform: uppercase;
+          letter-spacing: 0.05em;
           border-radius: 6px;
-          transition: background-color 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
-          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+          transition:
+            background-color 0.18s ease,
+            border-color 0.18s ease,
+            transform 0.08s ease,
+            box-shadow 0.18s ease;
           cursor: pointer;
-          gap: 0.5rem;
-    
+          gap: 0.35rem;
+          box-shadow: none;
+
           &:hover {
-            background-color: var(--bg-hover);
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+            background: color-mix(in srgb, var(--bg-hover) 90%, white 10%);
+            border-color: color-mix(in srgb, var(--text-muted) 62%, white 38%);
+            box-shadow: none;
           }
-    
+
           &:active {
             transform: translateY(1px);
             box-shadow: none;
           }
-    
+
           &:focus-visible {
-            outline: 2px solid var(--color-responded);
-            outline-offset: 2px;
-          }
-    
-          &:disabled {
-            background-color: var(--text-muted);
-            color: var(--text-secondary);
-            cursor: not-allowed;
-            opacity: 0.6;
-            box-shadow: none;
+            outline: 1px solid color-mix(in srgb, var(--text-muted) 70%, white 30%);
+            outline-offset: 1px;
           }
 
-          svg.send-icon {
-            display: inline-block;
-            vertical-align: middle;
-            transition: transform 0.2s ease;
-            fill: var(--text-primary);
-          }
-        
-          &:hover svg.send-icon {
-            transform: translateX(2px);
-          }
-        
-          &:disabled svg.send-icon {
-            fill: var(--text-secondary);
+          &:disabled {
+            background: color-mix(in srgb, var(--bg-inactive) 88%, black 12%);
+            color: var(--text-secondary);
+            border-color: color-mix(in srgb, var(--text-muted) 82%, black 18%);
+            cursor: not-allowed;
+            opacity: 0.65;
+            box-shadow: none;
           }
         }
       }
@@ -279,23 +290,43 @@
   }
 }
 
+@media (max-width: 640px) {
+  .step-card .step-expanded {
+    .response-footer {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .response-footer .right-side {
+      width: 100%;
+      justify-content: space-between;
+    }
+  }
+}
+
 @keyframes fadeSlideDown {
-  from { opacity: 0.5; transform: translateY(-2px); }
-  to   { opacity: 1;   transform: translateY(0); }
+  from {
+    opacity: 0.5;
+    transform: translateY(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 $step-status-styles: (
   responded: (color: var(--color-responded), bg: var(--bg-responded)),
-  standby:   (color: var(--color-responded), bg: var(--bg-responded)),
-  new:       (color: var(--color-new),       bg: var(--bg-new)),
-  loaded:    (color: var(--color-active),    bg: var(--bg-active)),
-  executed:  (color: var(--color-active),    bg: var(--bg-active)),
-  closed:    (color: var(--color-closed),    bg: var(--bg-closed)),
-  timeout:   (color: var(--color-inactive),  bg: var(--bg-inactive)),
-  cancelled: (color: var(--color-inactive),  bg: var(--bg-inactive)),
-  error:     (color: var(--color-inactive),  bg: var(--bg-inactive)),
-  cancel:    (color: var(--color-inactive),  bg: var(--bg-inactive)),
-  unable:    (color: var(--color-inactive),  bg: var(--bg-inactive))
+  standby: (color: var(--color-responded), bg: var(--bg-responded)),
+  new: (color: var(--color-new), bg: var(--bg-new)),
+  loaded: (color: var(--color-active), bg: var(--bg-active)),
+  executed: (color: var(--color-active), bg: var(--bg-active)),
+  closed: (color: var(--color-closed), bg: var(--bg-closed)),
+  timeout: (color: var(--color-inactive), bg: var(--bg-inactive)),
+  cancelled: (color: var(--color-inactive), bg: var(--bg-inactive)),
+  error: (color: var(--color-inactive), bg: var(--bg-inactive)),
+  cancel: (color: var(--color-inactive), bg: var(--bg-inactive)),
+  unable: (color: var(--color-inactive), bg: var(--bg-inactive))
 );
 
 @each $status, $props in $step-status-styles {
@@ -310,7 +341,7 @@ $step-status-styles: (
 }
 
 .step-card.idle {
-  border: 1px dashed var(--text-secondary);
+  border: 1px solid var(--text-muted);
   background-color: var(--bg-body);
 }
 
@@ -322,20 +353,32 @@ $step-status-styles: (
   cursor: default;
 }
 
-/* Pastilles statut */
-.step-status.responded { color: var(--color-responded); }
-.step-status.standby { color: var(--color-responded); }
+.step-status.responded {
+  color: var(--color-responded);
+}
 
-.step-status.new { color: var(--color-new); }
+.step-status.standby {
+  color: var(--color-responded);
+}
+
+.step-status.new {
+  color: var(--color-new);
+}
 
 .step-status.loaded,
-.step-status.executed { color: var(--color-active); }
+.step-status.executed {
+  color: var(--color-active);
+}
 
-.step-status.closed { color: var(--color-closed); }
+.step-status.closed {
+  color: var(--color-closed);
+}
 
 .step-status.timeout,
 .step-status.cancelled,
 .step-status.error,
 .step-status.idle,
 .step-status.cancel,
-.step-status.unable { color: var(--color-inactive); }
+.step-status.unable {
+  color: var(--color-inactive);
+}
