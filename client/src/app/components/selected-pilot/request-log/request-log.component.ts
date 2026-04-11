@@ -2,7 +2,7 @@ import { NgClass } from '@angular/common';
 import { AfterViewInit, Component, ElementRef, Input, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { formatQuickResponse, getQReponseByStepCode, QuickResponse, StepCode } from '@app/interfaces/Messages';
-import { StepUpdate } from '@app/interfaces/Payloads';
+import { PushbackDirection, StepUpdate } from '@app/interfaces/Payloads';
 import { PilotPublicView, StepPublicView } from '@app/interfaces/Publics';
 import { SelectedRequestInfo } from '@app/interfaces/SelectedRequest';
 import { StepStatus } from '@app/interfaces/StepStatus';
@@ -31,7 +31,7 @@ export class RequestLogComponent implements OnInit, OnDestroy, AfterViewInit {
   selectedAction: 'affirm' | 'standby' | 'unable' | null = null;
   response: string = '';
   selectedRequestInfo: SelectedRequestInfo; // only the stepCode
-  selectedDirection: 'LEFT' | 'RIGHT' | null = null;
+  selectedDirection: PushbackDirection = null;
   // ----
 
   requestIdSubscription: Subscription;
@@ -79,6 +79,7 @@ export class RequestLogComponent implements OnInit, OnDestroy, AfterViewInit {
       const isEmpty = requestInfo.stepCode || requestInfo.requestId;
       this.expanded = !!isEmpty && this.selectedRequestInfo.stepCode === this.step.step_code
       if (this.expanded) {
+        this.syncPushbackDirectionFromStep();
         this.isRespondable = ![StepStatus.RESPONDED, StepStatus.CLOSED].includes(this.step.status);
         this.quickResponses = getQReponseByStepCode(this.selectedRequestInfo.stepCode as StepCode);
       }
@@ -117,7 +118,7 @@ export class RequestLogComponent implements OnInit, OnDestroy, AfterViewInit {
     if (this.selectedPilotSid !== sid) this.selectedPilotSid = sid;
   }
 
-  selectDirection(event : Event, dir: 'LEFT' | 'RIGHT') {
+  selectDirection(event : Event, dir: PushbackDirection) {
     event.stopPropagation();
     this.selectedDirection = dir;
     this.step.label = `PUSHBACK ${dir}`;
@@ -138,14 +139,16 @@ export class RequestLogComponent implements OnInit, OnDestroy, AfterViewInit {
   
     const formattedResponse = this.response.trim();
     if (!formattedResponse) return;
+    const responseWithDirection = this.appendPushbackDirectionIfMissing(formattedResponse);
   
     const payload: StepUpdate = {
       pilot_sid: this.selectedPilotSid,
       step_code: this.step.step_code,
       request_id: this.step.request_id || 'no_req_id', //! this is so shit
-      message: formattedResponse,
+      message: responseWithDirection,
       action: this.selectedAction || 'affirm'
     };
+    if (this.step?.step_code === 'DM_131' && this.selectedDirection) payload.direction = this.selectedDirection;
 
     this.mainPageService.sendResponse(payload);
     this.response = '';
@@ -159,11 +162,37 @@ export class RequestLogComponent implements OnInit, OnDestroy, AfterViewInit {
     event.stopPropagation();
     const selectedStepCode = this.selectedRequestInfo?.stepCode as StepCode;
     if (!selectedStepCode) return;
-    const formattedText = formatQuickResponse(text as QuickResponse, selectedStepCode);
+    const formattedText = formatQuickResponse(
+      text as QuickResponse,
+      selectedStepCode,
+      this.selectedDirection as PushbackDirection
+    );
     if (!formattedText) return;
   
     this.response = formattedText;
     this.selectedAction = text.toLowerCase() as 'affirm' | 'standby' | 'unable';
+  }
+
+  private appendPushbackDirectionIfMissing(message: string): string {
+    if (this.step?.step_code !== 'DM_131' || !this.selectedDirection) return message;
+    const upper = message.toUpperCase();
+    if (upper.includes('LEFT') || upper.includes('RIGHT')) return message;
+    return `${message} (Direction: ${this.selectedDirection})`;
+  }
+
+  private syncPushbackDirectionFromStep(): void {
+    if (this.step?.step_code !== 'DM_131') return;
+    if (this.selectedDirection) return;
+    this.selectedDirection = this.extractPushbackDirection();
+  }
+
+  private extractPushbackDirection(): PushbackDirection {
+    const candidates = [this.step?.label, this.step?.message];
+    for (const candidate of candidates) {
+      const match = candidate?.toUpperCase().match(/\b(LEFT|RIGHT)\b/);
+      if (match?.[1] === 'LEFT' || match?.[1] === 'RIGHT') return match[1];
+    }
+    return null;
   }
 
   applySmart(text: string, event: MouseEvent): void {

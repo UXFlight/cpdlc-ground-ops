@@ -1,3 +1,5 @@
+import { PushbackDirection } from "./Payloads";
+
 export type StepCode = 'DM_136' | 'DM_134' | 'DM_131' | 'DM_135' | 'DM_127';
 export type QuickResponse = 'AFFIRM' | 'STANDBY' | 'UNABLE';
 
@@ -29,7 +31,20 @@ const QUICK_RESPONSES: Record<StepCode, Partial<Record<QuickResponse, string>>> 
   }
 };
 
-export const formatQuickResponse = (quick: QuickResponse, stepCode: StepCode): string => {
+export const formatQuickResponse = (
+    quick: QuickResponse,
+    stepCode: StepCode,
+    direction?: PushbackDirection
+): string => {
+    if (stepCode === 'DM_131' && direction) {
+        const dir = direction.toUpperCase();
+        const byDirection: Record<QuickResponse, string> = {
+            AFFIRM: `Pushback ${dir} approved. Start when ready.`,
+            STANDBY: `Standby for pushback ${dir} clearance.`,
+            UNABLE: `Unable to approve pushback ${dir}.`
+        };
+        return byDirection[quick];
+    }
     return QUICK_RESPONSES[stepCode]?.[quick] ?? '';
 };
 

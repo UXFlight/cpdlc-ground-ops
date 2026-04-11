@@ -16,6 +16,7 @@ class Atc:
         
     def handle_response(self, payload: dict, pilot: Pilot) -> UpdateStepData:
         pilot_sid, step_code, action, message, request_id = validate_atc_payload(payload)
+        direction = str(payload.get("direction") or "").upper()
 
         step = pilot.get_step(step_code)
         if not step:
@@ -36,6 +37,11 @@ class Atc:
                 time_left = None
             case _:
                 raise ValueError(f"Invalid action: {action}")
+
+        if step_code == "DM_131" and direction in {"LEFT", "RIGHT"}:
+            step.label = f"Pushback {direction}"
+            if direction not in message.upper():
+                message = f"{message} (Direction: {direction})"
 
         return UpdateStepData(
             pilot_sid=pilot_sid,

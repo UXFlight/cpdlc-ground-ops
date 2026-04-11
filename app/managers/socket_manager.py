@@ -309,13 +309,18 @@ class SocketManager:
 
             pilot.handle_step_update(update, self.socket)
 
-            self.socket.send("atcResponse", {
+            pilot_event_payload = {
                 "step_code": update.step_code,
                 "status": update.status.value,
                 "message": update.message,
                 "timestamp": update.validated_at,
                 "time_left": update.time_left,
-            }, room=update.pilot_sid)
+                "label": update.label,
+            }
+            direction = payload.get("direction")
+            if direction:
+                pilot_event_payload["direction"] = str(direction).upper()
+            self.socket.send("atcResponse", pilot_event_payload, room=update.pilot_sid)
             
             if update.status == StepStatus.NEW:
                 update.status = StepStatus.RESPONDED

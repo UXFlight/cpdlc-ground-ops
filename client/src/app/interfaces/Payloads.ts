@@ -1,3 +1,5 @@
+export type PushbackDirection = 'LEFT' | 'RIGHT' | null;
+
 export interface SmartResponse {
     responses: string[];
     step_code: string;
@@ -10,6 +12,7 @@ export interface StepUpdate {
     message: string;
     request_id: string;
     action: string;
+    direction?: PushbackDirection;
 }
 
 export interface ResponseCache {
@@ -19,3 +22,4 @@ export interface ResponseCache {
         };
     };
 }
+
