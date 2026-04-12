@@ -175,10 +175,7 @@ export class AirportMapComponent implements OnInit, AfterViewInit, OnDestroy {
     this.renderer.drawParkings(this.airportMap.parking, options);
     this.renderer.drawHelipads(this.airportMap.helipads, options);
   
-    if (this.showLabels) {
-      this.renderer.drawAllLineLabels(this.airportMap.taxiways, options);
-      }
-  
+    if (this.showLabels) this.renderer.drawAllLineLabels(this.airportMap.taxiways, options);
     this.renderer.drawPilots(this.pilots, options);
   }
   
