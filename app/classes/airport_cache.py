@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from typing import Optional, Set
+from typing import Set
 from app.utils.types import AirportMapData
 
 
