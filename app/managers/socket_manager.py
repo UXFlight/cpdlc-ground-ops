@@ -2,7 +2,7 @@ from flask import request  # type: ignore
 from typing import TYPE_CHECKING, Optional
 from app.utils.parse import interpolate_request_message, parse_status
 from app.utils.time_utils import get_current_timestamp, get_formatted_time
-from app.utils.types import Clearance, ClearanceType, PilotPublicView, SocketError, StepStatus, UpdateStepData
+from app.utils.types import Clearance, ClearanceType, PilotConnectInfo, PilotPublicView, SocketError, StepStatus, UpdateStepData
 from app.managers.log_manager import logger
 from app.classes.clearance import ClearanceEngine
 
@@ -69,7 +69,12 @@ class SocketManager:
         if role == 0:
             public_view : PilotPublicView = self.pilots.create(sid)
             logger.log_event(pilot_id=sid, event_type="SOCKET", message=f"Pilot connected: {sid}")
-            self.socket.send("connectedToAtc", self.atc_manager.connection_info, room=sid)
+            connected_payload: PilotConnectInfo = {
+                "facility": self.atc_manager.connection_info["facility"],
+                "connectedSince": self.atc_manager.connection_info["connectedSince"],
+                "sid": sid,
+            }
+            self.socket.send("connectedToAtc", connected_payload, room=sid)
             if self.atc_manager.has_any():
                 self.socket.send("pilot_connected", public_view, room="atc_room")
 
@@ -123,25 +128,50 @@ class SocketManager:
 
     ## === SEND REQUESTS
     def on_send_request(self, data: dict):
-        sid = request.sid # type: ignore
-        pilot : Pilot = self.pilots.get(sid)
+        sid = request.sid  # type: ignore
+        pilot: Pilot = self.pilots.get(sid)
         start_ts = get_current_timestamp()
 
         try:
+            request_type = data.get("requestType")
+
+            if request_type == "DM_135":
+                override: tuple[UpdateStepData, Clearance] | None = pilot.supersede_pending_expected_taxi()
+                if override:
+                    expected_update, cleared_expected = override
+
+                    self._emit_event(sid, {
+                        "event": "actionAcknowledged",
+                        "payload": expected_update.to_ack_payload()
+                    })
+
+                    self._emit_event("atc_room", {
+                        "event": "new_request",
+                        "payload": expected_update.to_atc_payload()
+                    })
+
+                    self._emit_event("atc_room", {
+                        "event": "proposedClearance",
+                        "payload": {
+                            "pilot_sid": pilot.sid,
+                            "clearance": cleared_expected
+                        }
+                    })
+
             step_payload: UpdateStepData = pilot.handle_send_request(data)
             step_code = step_payload.step_code
-            # gss_client.send_update_step(step_payload.to_dict())
+
             self._emit_event(sid, {
                 "event": "requestAcknowledged",
                 "payload": step_payload.to_ack_payload()
             })
-            
+
             message = interpolate_request_message(step_code, pilot, data.get("direction"))
             step_payload.message = message
-            
+
             status = parse_status(step_payload.status)
             step_payload.status = status
-            
+
             if step_code in ["DM_135", "DM_136"]:
                 kind: ClearanceType = "expected" if step_code == "DM_136" else "taxi"
                 issued_at = get_formatted_time(get_current_timestamp())
@@ -153,7 +183,7 @@ class SocketManager:
                     coords=coords,
                     issued_at=issued_at,
                 )
-                
+
                 pilot.set_clearance(clearance)
 
                 self._emit_event("atc_room", {
@@ -163,7 +193,7 @@ class SocketManager:
                         "clearance": clearance
                     }
                 })
-                     
+
             self._emit_event("atc_room", {
                 "event": "new_request",
                 "payload": step_payload.to_atc_payload()

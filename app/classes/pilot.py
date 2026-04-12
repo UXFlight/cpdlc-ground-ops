@@ -196,6 +196,42 @@ class Pilot:
         self.clearances[kind] = empty_clearance
         return empty_clearance
     
+    ## edge case where pilot requests expected taxi clearance then taxi clearance: 
+    ## atc cannot respond to expected since the real clearance has been requested/given.
+    def supersede_pending_expected_taxi(self) -> tuple[UpdateStepData, Clearance] | None:
+        expected_step = self.get_step("DM_136")
+        if not expected_step:
+            return None
+
+        if expected_step.status != StepStatus.REQUESTED:
+            return None
+
+        update = UpdateStepData(
+            pilot_sid=self.sid,
+            step_code="DM_136",
+            label=expected_step.label,
+            status=StepStatus.CLOSED,
+            message="Expected taxi request overrided by taxi clearance request.",
+            validated_at=get_current_timestamp(),
+            request_id=expected_step.request_id,
+            time_left=None,
+        )
+
+        expected_step.apply_update(update)
+        self.history.append(update)
+
+        cleared_clearance = self.clear_clearance("DM_136")
+
+        logger.log_action(
+            pilot_id=self.sid,
+            action_type="auto_close_expected",
+            status=update.status.value,
+            message=update.message,
+            time_left=update.time_left
+        )
+
+        return update, cleared_clearance
+    
     ## === Handle Actions ===
     def process_action(self, data: dict) -> UpdateStepData:
         action = data.get("action")

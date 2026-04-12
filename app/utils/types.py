@@ -137,6 +137,9 @@ class ConnectInfo(TypedDict):
     connectedSince: str | float
 # ===============================
 
+class PilotConnectInfo(ConnectInfo):
+    pilotSid: str
+
 ## SIMPLIFIED 'PUBLICVIEW' DATA FOR ATC FRONTEND
 LonLat = Tuple[float, float]
 

@@ -33,21 +33,21 @@ class LogManager:
         timestamp = get_formatted_time(get_current_timestamp())
         msg = message.replace('"', '\\"')
         time_str = f" timeLeft={time_left}" if time_left is not None else ""
-        console_line = f"[{timestamp}] {'REQUEST':<10} {request_type} status={status} msg=\"{msg}\"{time_str}"
-        print(console_line)
+        line = f"[{timestamp}] {'REQUEST':<10} {request_type} status={status} msg=\"{msg}\"{time_str}\n"
+        print(line.strip())
         if self.enabled:
             log_dir = self._get_log_dir(pilot_id)
-            self._write_line(log_dir / "cpdlc_backend.log", console_line)
+            self._write_line(log_dir / "cpdlc_backend.log", line)
 
     def log_action(self, pilot_id: str, action_type: str, status: str, message: str = "", time_left=None):
         timestamp = get_formatted_time(get_current_timestamp())
         msg = message.replace('"', '\\"')
         time_str = f" timeLeft={time_left}" if time_left is not None else ""
-        console_line = f"[{timestamp}] {'ACTION':<10} {action_type} status={status} msg=\"{msg}\"{time_str}"
-        print(console_line)
+        line = f"[{timestamp}] {'ACTION':<10} {action_type} status={status} msg=\"{msg}\"{time_str}\n"
+        print(line.strip())
         if self.enabled:
             log_dir = self._get_log_dir(pilot_id)
-            self._write_line(log_dir / "cpdlc_backend.log", console_line)
+            self._write_line(log_dir / "cpdlc_backend.log", line)
 
 
     def log_error(self, pilot_id: str, context: str, error: Exception | str, time_left=None):
@@ -72,7 +72,6 @@ class LogManager:
         with open(log_file, "r", encoding="utf-8") as f:
             lines = [line.strip() for line in f if line.strip()]
 
-        lines.reverse()
         return lines
 
 logger = LogManager()
