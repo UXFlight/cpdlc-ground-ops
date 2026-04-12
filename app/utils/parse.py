@@ -34,11 +34,3 @@ def parse_status(status: StepStatus) -> StepStatus:
     if status == StepStatus.REQUESTED:
         return StepStatus.NEW
     return status
-
-def parse_status_from_str(status_str: str) -> str:
-    try:
-        status_enum = StepStatus(status_str)
-        parsed = parse_status(status_enum)
-        return parsed.value
-    except ValueError:
-        return status_str
