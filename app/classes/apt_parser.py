@@ -88,7 +88,7 @@ class APTParser:
                 end = network.nodes[edge.node_end]
 
                 taxiways.append({
-                    "name": edge.name or "unnamed",
+                    "name": edge.name or "-",
                     "start": (start.lat, start.lon),
                     "end": (end.lat, end.lon),
                     "is_runway": edge.is_runway,

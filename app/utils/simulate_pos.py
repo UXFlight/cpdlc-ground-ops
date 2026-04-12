@@ -23,7 +23,7 @@ def simulate_plane_from_map(map_data: AirportMapData) -> Plane:
 
 
 def choose_spawn_location(map_data: AirportMapData) -> LocationInfo:
-    if map_data["parking"]:
+    if map_data["parking"]: # first spawning on parkings if available on airport map data (should be)
         pos = random.choice(map_data["parking"])
         return {
             "name": pos["name"],
@@ -42,7 +42,7 @@ def choose_spawn_location(map_data: AirportMapData) -> LocationInfo:
 
 
 def choose_final_location(map_data: AirportMapData) -> LocationInfo:
-    if not map_data["runways"]:
+    if not map_data["runways"]: # plane final location always should be on runways
         raise ValueError("No runway found in airport map.")
     
     rwy = random.choice(map_data["runways"])
