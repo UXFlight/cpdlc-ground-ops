@@ -5,10 +5,10 @@ from app.utils.types import AirportMapData, Plane
 
 class AirportMapManager:
     def __init__(self, icao: str):
-        self.icao = icao
-        self.cache = AirportCache()
-        self.map_data = self.get_or_parse_map(icao)
-        self.parser = None
+        self.icao: str = icao
+        self.cache: AirportCache = AirportCache()
+        self.map_data: AirportMapData = self.get_or_parse_map(icao)
+        self.parser: APTParser | None = None
 
     def get_or_parse_map(self, icao: str) -> AirportMapData:
         if self.cache.is_cached(icao):
