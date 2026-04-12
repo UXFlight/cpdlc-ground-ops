@@ -69,8 +69,7 @@ export class AirportMapService {
 
   private listenToSocketEvents(): void {
     this.socketClientService.listen('airport_map_data', this.onAirportMapData);
-
-    this.socketClientService.listen<ClearancePayload>('proposed_clearance', this.updatePilotClearance);
+    this.socketClientService.listen<ClearancePayload>('proposedClearance', this.updatePilotClearance);
     
   }
 

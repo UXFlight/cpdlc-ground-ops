@@ -58,7 +58,7 @@ export class MainPageService {
     this.clientSocketService.listen<PilotPublicView>('pilot_connected', this.onNewPilotPublicView)
     this.clientSocketService.listen<string>('pilot_disconnected', this.onPilotDisconnect)
     this.clientSocketService.listen<AckUpdatePayload>('new_request', this.onNewRequest)
-    this.clientSocketService.listen<ClearancePayload>('proposed_clearance', this.updatePilotClearance);
+    this.clientSocketService.listen<ClearancePayload>('proposedClearance', this.updatePilotClearance);
 
     // atc events 
     this.clientSocketService.listen<Atc[]>('atc_list', this.onAtcListUpdate);
