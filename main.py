@@ -4,6 +4,7 @@ try:
 except Exception:
     eventlet = None
 
+import argparse
 import threading
 import signal
 import sys
@@ -19,7 +20,11 @@ from app.routes import general
 
 from app.classes.agent import Echo
 
+import logging
+logging.getLogger('werkzeug').setLevel(logging.ERROR)
+
 exit_event = threading.Event()
+DEFAULT_ICAO = "KLAX"
 
 def create_app():
     mimetypes.add_type('application/javascript', '.js')
@@ -41,16 +46,17 @@ def signal_handler(sig, frame):
 
 if __name__ == '__main__':
     signal.signal(signal.SIGINT, signal_handler)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--icao", "--ICAO", default=DEFAULT_ICAO)
+    args = parser.parse_args()
+
+    selected_icao: str = args.icao.upper()
 
     app, socketio = create_app()
-
-    import logging
-    logging.getLogger('werkzeug').setLevel(logging.ERROR)
-
     # agent = Echo()
     # Echo.start_ingescape_agent() #! to start ingescape agent
     
-    airport_map_manager = AirportMapManager()
+    airport_map_manager = AirportMapManager(selected_icao)
     metrics_store = SystemMetrics()
     socket_service = SocketService(socketio, metrics_store)
     pilot_manager = PilotManager(airport_map_manager=airport_map_manager)
