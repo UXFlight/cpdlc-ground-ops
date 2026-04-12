@@ -8,7 +8,6 @@ import { SelectedRequestInfo } from '@app/interfaces/SelectedRequest';
 import { ResponseCache, StepUpdate } from '@app/interfaces/Payloads'; // SmartResponse
 import { AirportMapService } from './airport-map.service';
 import { LABELS } from '@app/modules/constants';
-// import { StepStatus } from '@app/interfaces/StepStatus';
 
 @Injectable({
   providedIn: 'root'
@@ -76,7 +75,7 @@ export class MainPageService {
       label: payload.label || LABELS[payload.step_code] || payload.step_code,
       status: payload.status,
       message: payload.message,
-      timestamp: Date.now(), // ou un autre timestamp si nécessaire
+      timestamp: Date.now(), // or another timestamp if necessary
       validated_at: payload.validated_at,
       request_id: payload.request_id,
       time_left: payload.time_left ?? null
@@ -138,9 +137,6 @@ export class MainPageService {
   getActiveStep(sid: string): StepPublicView[] {
     const pilot = this.getPilotBySid(sid);
     if (!pilot) return [];
-    // return Object.values(pilot.steps).filter(
-    //   step => [StepStatus.NEW, StepStatus.LOADED, StepStatus.EXECUTED, StepStatus.STANDBY].includes(step.status)
-    // );
     return Object.values(pilot.steps)
   }
 
@@ -181,16 +177,6 @@ export class MainPageService {
   getSid(): string | null {
     return this.clientSocketService.getSocketId();
   }
-
-  // private setPilotCache(payload: SmartResponse) {
-  //   const { responses, pilot_sid, step_code } = payload;
-  
-  //   if (!this.responseCache[pilot_sid]) this.responseCache[pilot_sid] = {};
-  
-  //   this.responseCache[pilot_sid][step_code] = {
-  //     responses: responses
-  //   };
-  // }
 
   // === Socket Event Handlers ===
   private onConnect = () => {
