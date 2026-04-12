@@ -186,12 +186,12 @@ class Pilot:
         if not kind:
             raise ValueError(f"Unknown step_code: {step_code}")
         
-        empty_clearance : Clearance = {
-            "kind": kind,
-            "instruction": "",
-            "coords": [],
-            "issued_at": get_formatted_time(get_current_timestamp()),
-        }
+        empty_clearance : Clearance = Clearance(
+            kind=kind,
+            instruction="",
+            coords=[],
+            issued_at=get_formatted_time(get_current_timestamp()),
+        )
 
         self.clearances[kind] = empty_clearance
         return empty_clearance

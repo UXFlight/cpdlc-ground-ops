@@ -1,9 +1,8 @@
 from flask import request  # type: ignore
 from typing import TYPE_CHECKING, Optional
-from app.utils.constants import TIMER_DURATION
-from app.utils.parse import interpolate_request_message, parse_status, parse_status_from_str
+from app.utils.parse import interpolate_request_message, parse_status
 from app.utils.time_utils import get_current_timestamp, get_formatted_time
-from app.utils.types import Clearance, ClearanceType, ConnectInfo, PilotPublicView, SocketError, StepStatus, UpdateStepData
+from app.utils.types import Clearance, ClearanceType, PilotPublicView, SocketError, StepStatus, UpdateStepData
 from app.managers.log_manager import logger
 from app.classes.clearance import ClearanceEngine
 
@@ -26,16 +25,9 @@ class SocketManager:
         self.metrics = metrics_store
         self._disconnecting: set[str] = set()
         
-        # not injected
-        self.logger = logger
-        self.connection_info: ConnectInfo = {
-            "facility": "KLAX",
-            "connectedSince": get_current_timestamp()
-        }
-
     def _emit_event(self, sid: str, result: dict | SocketError):
         if not result or not isinstance(result, dict):
-            self.logger.log_error(pilot_id=sid, context="SOCKET", error="Invalid result payload")
+            logger.log_error(pilot_id=sid, context="SOCKET", error="Invalid result payload")
             return
         self.socket.send(result["event"], result["payload"], room=sid)
 
@@ -55,6 +47,7 @@ class SocketManager:
         self.socket.listen("sendRequest", self.on_send_request)
         self.socket.listen("cancelRequest", self.on_cancel_request)
         self.socket.listen("sendAction", self.on_action_event)
+        self.socket.listen("getActivity", self.on_activity_request)
         
         # ATC EVENTS
         self.socket.listen("getPilotList", self.handle_pilot_list)
@@ -76,7 +69,7 @@ class SocketManager:
         if role == 0:
             public_view : PilotPublicView = self.pilots.create(sid)
             logger.log_event(pilot_id=sid, event_type="SOCKET", message=f"Pilot connected: {sid}")
-            self.socket.send("connectedToAtc", self.connection_info, room=sid)
+            self.socket.send("connectedToAtc", self.atc_manager.connection_info, room=sid)
             if self.atc_manager.has_any():
                 self.socket.send("pilot_connected", public_view, room="atc_room")
 
@@ -154,12 +147,12 @@ class SocketManager:
                 issued_at = get_formatted_time(get_current_timestamp())
                 instruction, coords = self.clearance_engine.generate_clearance(pilot)
 
-                clearance: Clearance = {
-                    "kind": kind,
-                    "instruction": instruction,
-                    "coords": coords,
-                    "issued_at": issued_at,
-                }
+                clearance: Clearance = Clearance(
+                    kind=kind,
+                    instruction=instruction,
+                    coords=coords,
+                    issued_at=issued_at,
+                )
                 
                 pilot.set_clearance(clearance)
 
@@ -271,6 +264,12 @@ class SocketManager:
             self._emit_event(sid, error_payload)
             logger.log_error(pilot_id=sid, context="ACTION", error=str(e))
             self._record_error()
+
+    ## == ACTIVITY REQUEST
+    def on_activity_request(self):
+        sid = request.sid
+        print(logger.get_logs_for_pilot(sid)[:10])
+        pass
 
     ## ATC EVENTS
     ## === SEND RESPONSE
@@ -479,12 +478,12 @@ class SocketManager:
             issued_at = get_formatted_time(get_current_timestamp())
             instruction, coords = self.clearance_engine.generate_clearance(pilot)
 
-            clearance: Clearance = {
-                "kind": kind,
-                "instruction": instruction,
-                "coords": coords,
-                "issued_at": issued_at,
-            }
+            clearance: Clearance = Clearance(
+                kind=kind,
+                instruction=instruction,
+                coords=coords,
+                issued_at=issued_at,
+            )
 
             pilot.set_clearance(clearance)
             self._emit_event("atc_room", {
