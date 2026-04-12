@@ -199,6 +199,7 @@ export class AirportMapComponent implements OnInit, AfterViewInit, OnDestroy {
   private onCanvasWheel = (evt: WheelEvent) => {
     evt.preventDefault();
   
+    if (this.isDragging) return;
     const canvas = this.canvasRef.nativeElement;
     const rect = canvas.getBoundingClientRect();
     const mouseX = evt.clientX - rect.left;
