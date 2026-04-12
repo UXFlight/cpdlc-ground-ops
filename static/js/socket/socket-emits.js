@@ -15,3 +15,7 @@ export function emitCancelRequest(requestType) {
 export function emitAction(action, requestType) {
   send(SOCKET_EMITS.SEND_ACTION, { action, requestType });
 }
+
+export function emitActivityRequest() {
+  send(SOCKET_EMITS.GET_PILOT_ACTIVITY)
+}

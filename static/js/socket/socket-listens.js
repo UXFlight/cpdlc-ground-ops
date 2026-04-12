@@ -12,6 +12,7 @@ import { SOCKET_LISTENS } from "../consts/socketConsts.js";
 import { setConnectionInfos } from "../state/settingsState.js";
 import { updateClearance } from "../socket-events/clearanceUpdate.js";
 import { CONNECTION_STATUS } from "../consts/connectionConsts.js";
+import { handleActivityDownload } from "../socket-events/activityDownload.js";
 
 export function setupSocketListeners() {
   listen(SOCKET_LISTENS.CONNECT, () => {
@@ -53,6 +54,9 @@ export function setupSocketListeners() {
 
   // clearance update
   listen(SOCKET_LISTENS.CLEARANCE_UPDATE, updateClearance);
+
+  // pilot activity logs download
+  listen(SOCKET_LISTENS.ACTIVITY_INFO, handleActivityDownload);
 
   // why handling errors if program is good
   listen(SOCKET_LISTENS.ERROR, handleError);
