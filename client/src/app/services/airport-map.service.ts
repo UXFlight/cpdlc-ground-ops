@@ -288,14 +288,8 @@ export class AirportMapService {
     this.zoomTarget = newZoom;
     this.panTarget = newPan;
 
-    if (this.prefersReducedMotion) {
-      this.setZoomAndPan(this.zoomTarget, this.panTarget);
-      return;
-    }
-
-    if (!this.zoomAnimationId) {
-      this.zoomAnimationId = requestAnimationFrame(this.animateZoomStep);
-    }
+    if (this.prefersReducedMotion) return this.setZoomAndPan(this.zoomTarget, this.panTarget);
+    if (!this.zoomAnimationId) this.zoomAnimationId = requestAnimationFrame(this.animateZoomStep);
   }
 
   selectPlane(plane: PilotPublicView | null): void {
@@ -307,12 +301,19 @@ export class AirportMapService {
   }
   // event
   applyPan(dx: number, dy: number): void {
+    if (this.zoomAnimationId) {
+      cancelAnimationFrame(this.zoomAnimationId);
+      this.zoomAnimationId = 0;
+      this.zoomTarget = this.zoomFactor;
+      this.panTarget = { ...this.panOffset };
+    }
+
     this.panOffset.x += dx * this.PAN_SENSITIVITY;
     this.panOffset.y += dy * this.PAN_SENSITIVITY;
   }
 
   getBaseScale(): number {
-    return this.baseScale || 1; // fallback pour éviter division par 0
+    return this.baseScale || 1; // fallback to avoid 0 division
   }
 
   rotateBy(deltaRadians: number): void {
@@ -331,14 +332,8 @@ export class AirportMapService {
     this.zoomTarget = newZoom;
     this.panTarget = newPan;
 
-    if (this.prefersReducedMotion) {
-      this.setZoomAndPan(this.zoomTarget, this.panTarget);
-      return;
-    }
-
-    if (!this.zoomAnimationId) {
-      this.zoomAnimationId = requestAnimationFrame(this.animateZoomStep);
-    }
+    if (this.prefersReducedMotion) return this.setZoomAndPan(this.zoomTarget, this.panTarget);
+    if (!this.zoomAnimationId) this.zoomAnimationId = requestAnimationFrame(this.animateZoomStep);
   }
 
   private computePanForZoom(newZoom: number, center: [number, number]): { x: number; y: number } {
