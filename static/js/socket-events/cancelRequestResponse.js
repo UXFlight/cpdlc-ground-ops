@@ -10,9 +10,7 @@ export const handleCancelRequest = (data) => {
     const requestBtn = document.querySelector(SELECTORS.REQUEST_BUTTON_BY_REQUESTTYPE(step_code));
 
     if (requestBtn) requestBtn.disabled = false;
-    if (step_code === REQUEST_TYPE.PUSHBACK) {
-        togglePushbackState(true);
-    }
+    if (step_code === REQUEST_TYPE.PUSHBACK) togglePushbackState(true);
     hideSpinner(step_code);
     updateStep(step_code, status, message, null, time_left);
     displayHistoryLogs();
