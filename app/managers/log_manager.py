@@ -70,7 +70,10 @@ class LogManager:
             return []
 
         with open(log_file, "r", encoding="utf-8") as f:
-            return f.readlines()
+            lines = [line.strip() for line in f if line.strip()]
+
+        lines.reverse()
+        return lines
 
 logger = LogManager()
 if os.getenv("CPDLC_DISABLE_LOGS") == "1":
