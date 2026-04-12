@@ -60,7 +60,7 @@ if __name__ == '__main__':
     metrics_store = SystemMetrics()
     socket_service = SocketService(socketio, metrics_store)
     pilot_manager = PilotManager(airport_map_manager=airport_map_manager)
-    atc_manager = AtcManager()
+    atc_manager = AtcManager(selected_icao)
 
     general.pilot_manager = pilot_manager
     general.socket_service = socket_service

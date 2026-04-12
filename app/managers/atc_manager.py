@@ -1,13 +1,18 @@
 from typing import TYPE_CHECKING
 
-from app.utils.types import AtcPublicView
+from app.utils.time_utils import get_current_timestamp
+from app.utils.types import AtcPublicView, ConnectInfo
 
 if TYPE_CHECKING:
     from app.classes.atc import Atc
 
 class AtcManager:
-    def __init__(self):
+    def __init__(self, selected_icao: str):
         self._atcs: dict[str, "Atc"] = {}  # sid -> Atc
+        self.connection_info: ConnectInfo = ConnectInfo(
+            facility=selected_icao,
+            connectedSince=get_current_timestamp(),
+        )
 
     def create(self, sid: str) -> None:
         from app.classes.atc import Atc
