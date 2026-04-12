@@ -23,15 +23,23 @@
         ></textarea>
     
         @if (!isEditing && clearance.coords.length) {
-            <div class="support-toggle" (click)="toggleDetails()" [class.expanded]="showDetails">
-                <span class="label">Detailed</span>
-                <span class="arrow">{{ showDetails ? '↑' : '↓' }}</span>
-            </div>
+            <button
+                type="button"
+                class="support-toggle"
+                (click)="toggleDetails()"
+                [class.expanded]="showDetails"
+            >
+                <span class="label">{{ showDetails ? 'Hide details' : 'Show details' }}</span>
+
+                <svg class="chevron" viewBox="0 0 20 20" aria-hidden="true">
+                    <path d="M5 7.5 10 12.5 15 7.5" />
+                </svg>
+            </button>
             
-            <div class="support-coords-wrapper" [class.open]="showDetails">
-                <div class="support-coords">
+            <div class="support-route-wrapper" [class.open]="showDetails">
+                <div class="support-route">
                     @for (coord of clearance.coords; track $index) {
-                        <span class="coord">{{ coord.name }}</span>
+                        <span class="route-node">{{ coord.name }}</span>
                     }
                 </div>
             </div>

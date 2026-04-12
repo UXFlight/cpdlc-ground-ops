@@ -106,52 +106,73 @@
     }
 
     .support-toggle {
-        cursor: pointer;
+        border: none;
         display: inline-flex;
         align-items: center;
-        gap: 0.5rem;
-        font-weight: 600;
-        user-select: none;
+        gap: 0.45rem;
         margin-top: 0.5rem;
+        background: var(--bg-container);
+        color: var(--text-secondary);
+        cursor: pointer;
+        font-weight: 500;
 
-        .arrow {
-            color: var(--text-secondary);
-            font-size: 1rem;
-            transition: transform 0.2s ease;
+        &:hover {
+            color: var(--text-primary);
         }
 
         .label {
-            font-weight: 500;
-            margin-right: 0.4rem;
-            opacity: 0.7;
+            line-height: 1;
+        }
+
+        .chevron {
+            width: 14px;
+            height: 14px;
+            stroke: currentColor;
+            stroke-width: 2.2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            fill: none;
+            transition: transform 0.18s ease;
+            flex-shrink: 0;
+        }
+
+        &.expanded .chevron {
+            transform: rotate(180deg);
         }
     }
 
-    .support-coords-wrapper {
+   .support-route-wrapper {
         max-height: 0;
         overflow: hidden;
-        transition: max-height 0.3s ease;
+        transition: max-height 0.25s ease;
 
         &.open {
-            max-height: 300px;
+            max-height: 120px;
         }
+    }
 
-        .support-coords {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.4rem;
-            font-size: 0.75rem;
-            color: var(--text-secondary);
-            align-items: center;
+    .support-route {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.35rem;
+        padding-top: 0.45rem;
+    }
 
-            .coord {
-                background-color: #2d2d3d;
-                padding: 0.2rem 0.5rem;
-                border-radius: 4px;
-                font-family: monospace;
-                opacity: 0.8;
-            }
-        }
+    .route-node {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        height: 26px;
+        padding: 0 0.55rem;
+        border-radius: 6px;
+        background: var(--bg-secondary);
+        border: 1px solid rgb(var(--color-inactive-rgb) / 18%);
+        color: var(--text-primary);
+        font-size: 0.76rem;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        white-space: nowrap;
     }
 
     .actions {
