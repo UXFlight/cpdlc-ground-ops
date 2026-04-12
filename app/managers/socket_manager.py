@@ -157,7 +157,7 @@ class SocketManager:
                 pilot.set_clearance(clearance)
 
                 self._emit_event("atc_room", {
-                    "event": "proposed_clearance",
+                    "event": "proposedClearance",
                     "payload": {
                         "pilot_sid": pilot.sid,
                         "clearance": clearance
@@ -199,7 +199,7 @@ class SocketManager:
             if update_data.step_code in ["DM_135", "DM_136"]:
                 clearance = pilot.clear_clearance(update_data.step_code)
                 self._emit_event("atc_room", {
-                    "event": "proposed_clearance",
+                    "event": "proposedClearance",
                     "payload": {
                         "pilot_sid": pilot.sid,
                         "clearance": clearance
@@ -207,7 +207,7 @@ class SocketManager:
                 })
                 
                 self._emit_event(pilot.sid, {
-                    "event": "proposed_clearance",
+                    "event": "proposedClearance",
                     "payload": {
                         "kind": clearance["kind"],
                         "instruction": clearance["instruction"]
@@ -243,7 +243,7 @@ class SocketManager:
                 clearance = pilot.clear_clearance(update_data.step_code)
                 
                 self._emit_event(sid, {
-                    "event": "proposed_clearance",
+                    "event": "proposedClearance",
                     "payload": {
                         "kind": clearance["kind"],
                         "instruction": clearance["instruction"]
@@ -251,7 +251,7 @@ class SocketManager:
                 })
                 
                 self._emit_event("atc_room", {
-                    "event": "proposed_clearance",
+                    "event": "proposedClearance",
                     "payload": {
                         "pilot_sid": pilot.sid,
                         "clearance": clearance
@@ -266,10 +266,34 @@ class SocketManager:
             self._record_error()
 
     ## == ACTIVITY REQUEST
-    def on_activity_request(self):
-        sid = request.sid
-        print(logger.get_logs_for_pilot(sid)[:10])
-        pass
+    def on_activity_request(self, data=None):
+        sid = request.sid  # type: ignore
+
+        try:
+            logger.log_event(
+                pilot_id=sid,
+                event_type="ACTIVITY",
+                message="Pilot requested activity logs"
+            )
+
+            logs = logger.get_logs_for_pilot(sid)
+            print(logs[:20])
+
+            self._emit_event(sid, {
+                "event": "activityInfoResponse",
+                "payload": {
+                    "logs": logs[:20]
+                }
+            })
+
+        except Exception as e:
+            logger.log_error(pilot_id=sid, context="ACTIVITY", error=str(e))
+            self._emit_event(sid, {
+                "event": "activityInfoResponse",
+                "payload": {
+                    "logs": []
+                }
+            })
 
     ## ATC EVENTS
     ## === SEND RESPONSE
@@ -337,7 +361,7 @@ class SocketManager:
                     clearance = pilot.clearances["expected"]
                 if clearance: 
                     self._emit_event(pilot_sid, {
-                        "event": "proposed_clearance",
+                        "event": "proposedClearance",
                         "payload": {
                             "kind": clearance["kind"],
                             "instruction": clearance["instruction"]
@@ -348,7 +372,7 @@ class SocketManager:
                 clearance = pilot.clear_clearance(update.step_code)
                 
                 self._emit_event(pilot_sid, {
-                    "event": "proposed_clearance",
+                    "event": "proposedClearance",
                     "payload": {
                         "kind": clearance["kind"],
                         "instruction": clearance["instruction"]
@@ -358,7 +382,7 @@ class SocketManager:
                 print("Emitting proposed clearance to ATC room")
                 
                 self._emit_event("atc_room", {
-                    "event": "proposed_clearance",
+                    "event": "proposedClearance",
                     "payload": {
                         "pilot_sid": pilot.sid,
                         "clearance": clearance
@@ -487,7 +511,7 @@ class SocketManager:
 
             pilot.set_clearance(clearance)
             self._emit_event("atc_room", {
-                "event": "proposed_clearance",
+                "event": "proposedClearance",
                 "payload": {
                     "pilot_sid": pilot.sid,
                     "clearance": clearance
