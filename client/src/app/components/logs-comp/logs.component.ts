@@ -14,6 +14,17 @@ import { ClearancesStickerComponent } from '../clearances-sticker/clearances-sti
 import { SelectedRequestInfo } from '@app/interfaces/SelectedRequest';
 import { ClearanceBlockComponent } from './clearance-block/clearance-block.component';
 
+enum CardinalDirection {
+    N = 'N',
+    NE = 'NE',
+    E = 'E',
+    SE = 'SE',
+    S = 'S',
+    SO = 'SO',
+    O = 'O',
+    NO = 'NO',
+  }
+
 @Component({
   selector: 'app-logs',
   standalone: true,
@@ -130,11 +141,7 @@ export class LogsComponent implements OnInit, OnDestroy {
       return
     }
 
-    if (event.key === 'Escape') {
-        this.airportMapService.resetZoom();
-        return
-    }
-
+    if (event.key === 'Escape') return this.airportMapService.resetZoom();
     if (event.ctrlKey && event.key === 'r') {
         event.preventDefault();
         return this.airportMapService.resetZoom();
@@ -142,18 +149,11 @@ export class LogsComponent implements OnInit, OnDestroy {
 
     if (event.ctrlKey && event.key === 's') {
         event.preventDefault();
-        this.airportMapService.toggleLabels();
-        return;
+        return this.airportMapService.toggleLabels();
     }
 
-        
-    if (event.key === 'ArrowLeft') {
-        return this.airportMapService.navigateToPilot(this.pilots, 'prev');
-    } 
-        
-    if (event.key === 'ArrowRight') {
-        return this.airportMapService.navigateToPilot(this.pilots, 'next');
-    }
+    if (event.key === 'ArrowLeft') return this.airportMapService.navigateToPilot(this.pilots, 'prev');
+    if (event.key === 'ArrowRight') return this.airportMapService.navigateToPilot(this.pilots, 'next');
 
     if (!this.selectedPlane) return;
     const planeSteps = Object.values(this.selectedPlane.steps);
@@ -182,6 +182,23 @@ export class LogsComponent implements OnInit, OnDestroy {
     }
   }
 
+  formatHeading(heading: number): string {
+    return `${this.parseHeadingToCardinal(heading)} (${heading.toFixed(2)}°)`;
+  }
+
+  parseHeadingToCardinal(heading: number): CardinalDirection {
+    const normalized = ((heading % 360) + 360) % 360;
+
+    if (normalized >= 337.5 || normalized < 22.5) return CardinalDirection.N;
+    if (normalized < 67.5) return CardinalDirection.NE;
+    if (normalized < 112.5) return CardinalDirection.E;
+    if (normalized < 157.5) return CardinalDirection.SE;
+    if (normalized < 202.5) return CardinalDirection.S;
+    if (normalized < 247.5) return CardinalDirection.SO;
+    if (normalized < 292.5) return CardinalDirection.O;
+    return CardinalDirection.NO;
+  }
+
   // clearances
   getMRecentClearance(): Clearance | null {
     if (!this.selectedPlane || !this.selectedPlane.clearances) return null;
@@ -190,9 +207,7 @@ export class LogsComponent implements OnInit, OnDestroy {
   
     for (const kind of priority) {
       const c = this.selectedPlane.clearances[kind];
-      if (c && c.instruction.trim() !== "") {
-        return c;
-      }
+      if (c && c.instruction.trim() !== "") return c;
     }
   
     return null;

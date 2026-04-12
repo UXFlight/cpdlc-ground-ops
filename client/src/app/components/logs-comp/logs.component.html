@@ -10,42 +10,47 @@
     
     @if (selectedPlane) {
         <div class="selected-pilot-info">
-            
-            
-            <div class="active-steps">
-                <app-clearance-block [clearance]="getMRecentClearance()"></app-clearance-block>
-                @for (step of getActiveSteps(selectedPlane); track step.request_id) {
-                    <app-request-log [step]="step"></app-request-log>
-                }
-            </div>
-            <div class="info-box">
+            <div>
                 <div class="pilot-header">
                     <div class="pilot-id" [ngStyle]="{'color': selectedPlane.color}">
                         {{ selectedPlane.sid.substring(0, 4).toUpperCase() }}
                     </div>
             
                     @if (hasMultiplePilot()) {
-                        <div>
-                            <button 
-                                class="nav-btn" 
+                        <div class="pilot-nav">
+                            <button
+                                class="nav-btn"
                                 (click)="navigateToPilot('prev')"
-                                [title]="'see previous pilot (use arrow keys to navigate)'"
-                            >←</button>
-                            <button 
-                                class="nav-btn" 
+                                [title]="'See previous pilot'"
+                                aria-label="See previous pilot"
+                                type="button"
+                            >
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M15 18l-6-6 6-6" />
+                                </svg>
+                            </button>
+
+                            <button
+                                class="nav-btn"
                                 (click)="navigateToPilot('next')"
-                                [title]="'see next pilot (use arrow keys to navigate)'"
-                            >→</button>
+                                [title]="'See next pilot'"
+                                aria-label="See next pilot"
+                                type="button"
+                            >
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M9 18l6-6-6-6" />
+                                </svg>
+                            </button>
                         </div>
                     }
-            
+                                
                     <!-- Logs Button -->
                 <button 
                     class="logs-btn" 
                     (click)="viewPilotLogs()"
                     [title]="'View detailed logs for ' + selectedPlane.sid.substring(0,4).toUpperCase()"
                 >
-                    <span>More</span>
+                    <span>Pilot control panel</span>
                     <svg class="logs-icon" viewBox="0 0 24 24" aria-hidden="true">
                         <g>
                             <g data-name="Layer 2">
@@ -63,8 +68,15 @@
                     <div class="position-info">
                         <span><strong>Pos:</strong> {{ selectedPlane.plane.current_pos.name }}</span>
                         <span><strong>Dest:</strong> {{ selectedPlane.plane.final_pos.name }}</span>
-                        <span><strong>Heading:</strong> {{ selectedPlane.plane.current_heading.toFixed(2) }}°</span>
+                        <span><strong>Heading:</strong> {{ formatHeading(selectedPlane.plane.current_heading) }}</span>
                     </div>
+                }
+            </div>
+            
+            <div class="active-steps">
+                <app-clearance-block [clearance]="getMRecentClearance()"></app-clearance-block>
+                @for (step of getActiveSteps(selectedPlane); track step.request_id) {
+                    <app-request-log [step]="step"></app-request-log>
                 }
             </div>
         </div>
