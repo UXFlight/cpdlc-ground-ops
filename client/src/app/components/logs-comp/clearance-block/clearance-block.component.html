@@ -1,5 +1,5 @@
 @if (clearance) {
-    <div class="clearance-card" [class.editing]="isEditing">
+    <div class="clearance-card" [class.editing]="isEditing" [ngClass]="step?.status">
         <div class="header">
             <div class="kind-container">
                 <span class="kind">{{ clearance.kind.toUpperCase() }} CLEARANCE</span>

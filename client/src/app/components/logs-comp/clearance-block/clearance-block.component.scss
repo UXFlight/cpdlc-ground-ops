@@ -1,26 +1,73 @@
 .clearance-card {
+    border: 1px solid transparent;
     border-radius: 10px;
-    padding: 0 0.5rem 1rem;
+    padding: 0.5rem 1rem;
     background-color: var(--bg-container);
     color: var(--text-primary);
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
     box-shadow: 0 0 6px rgba(255, 255, 255, 0.05);
-    transition: border-color 0.3s ease;
+    transition: border-color 0.3s ease, background-color 0.3s ease, box-shadow 0.3s ease;
 
-    &.responded { border-color: var(--color-responded); }
-    &.standby   { border-color: var(--color-responded); }
-    &.new       { border-color: var(--color-new); }
+    &.responded,
+    &.standby {
+        border-color: var(--color-responded);
+        background-color: var(--bg-responded);
+    }
+
+    &.new {
+        border-color: var(--color-new);
+        background-color: var(--bg-new);
+    }
+
     &.loaded,
-    &.executed  { border-color: var(--color-active); }
-    &.closed    { border-color: var(--color-closed); }
+    &.executed {
+        border-color: var(--color-active);
+        background-color: var(--bg-active);
+    }
+
+    &.closed,
+    &.cancel {
+        border-color: var(--color-closed);
+        background-color: var(--bg-closed);
+    }
+
     &.timeout,
     &.cancelled,
     &.error,
     &.idle,
-    &.cancel,
-    &.unable    { border-color: var(--color-inactive); }
+    &.unable {
+        border-color: var(--color-inactive);
+        background-color: var(--bg-inactive);
+    }
+
+    &.responded .kind,
+    &.standby .kind {
+        color: var(--color-responded);
+    }
+
+    &.new .kind {
+        color: var(--color-new);
+    }
+
+    &.loaded .kind,
+    &.executed .kind {
+        color: var(--color-active);
+    }
+
+    &.closed .kind,
+    &.cancel .kind {
+        color: var(--color-closed);
+    }
+
+    &.timeout .kind,
+    &.cancelled .kind,
+    &.error .kind,
+    &.idle .kind,
+    &.unable .kind {
+        color: var(--color-inactive);
+    }
 
     .header {
         display: flex;
@@ -39,20 +86,6 @@
                 transition: color 0.3s ease;
             }
 
-            // Couleur du titre = couleur statut
-            .responded & .kind { color: var(--color-responded); }
-            .standby   & .kind { color: var(--color-responded); }
-            .new       & .kind { color: var(--color-new); }
-            .loaded    & .kind,
-            .executed  & .kind { color: var(--color-active); }
-            .closed    & .kind { color: var(--color-closed); }
-            .timeout   & .kind,
-            .cancelled & .kind,
-            .error     & .kind,
-            .idle      & .kind,
-            .cancel    & .kind,
-            .unable    & .kind { color: var(--color-inactive); }
-
             .step-status {
                 font-weight: 600;
                 text-transform: uppercase;
@@ -64,18 +97,36 @@
                 border: 1px solid;
             }
 
-            .step-status.responded { color: var(--color-responded); }
-            .step-status.standby   { color: var(--color-responded); }
-            .step-status.new       { color: var(--color-new); }
+            .step-status.responded,
+            .step-status.standby {
+                color: var(--color-responded);
+            }
+
+            .step-status.new {
+                color: var(--color-new);
+                border-color: rgb(var(--color-new-rgb) / 45%);
+            }
+
             .step-status.loaded,
-            .step-status.executed  { color: var(--color-active); }
+            .step-status.executed {
+                color: var(--color-active);
+                border-color: rgb(var(--color-active-rgb) / 45%);
+            }
+
             .step-status.cancel,
-            .step-status.closed    { color: var(--color-closed); }
+            .step-status.closed {
+                color: var(--color-closed);
+                border-color: rgb(var(--color-closed-rgb) / 45%);
+            }
+
             .step-status.timeout,
             .step-status.cancelled,
             .step-status.error,
             .step-status.idle,
-            .step-status.unable    { color: var(--color-inactive); }
+            .step-status.unable {
+                color: var(--color-inactive);
+                border-color: rgb(var(--color-inactive-rgb) / 45%);
+            }
         }
 
         .timestamp {
@@ -93,16 +144,30 @@
     }
 
     .instruction {
-        height: fit-content;
         width: 100%;
-        border: 1px solid var(--text-muted);
-        border-radius: 6px;
-        padding: 0.5rem;
-        font-size: 1rem;
-        background: transparent;
+        min-height: 96px;
+        padding: 0.7rem 0.8rem;
+        border-radius: 8px;
+        border: 1px solid rgb(var(--color-inactive-rgb) / 22%);
         color: var(--text-primary);
+        font-size: 0.95rem;
+        line-height: 1.45;
         resize: vertical;
-        transition: border 0.2s ease;
+        background-color: transparent;
+
+        &::placeholder {
+            color: var(--text-muted);
+        }
+
+        &:focus {
+            outline: none;
+            border-color: var(--color-primary);
+        }
+
+        &[readonly] {
+            cursor: default;
+            border-color: rgb(var(--color-inactive-rgb) / 16%);
+        }
     }
 
     .support-toggle {
@@ -111,10 +176,11 @@
         align-items: center;
         gap: 0.45rem;
         margin-top: 0.5rem;
-        background: var(--bg-container);
+        background: transparent;
         color: var(--text-secondary);
         cursor: pointer;
         font-weight: 500;
+        padding: 0;
 
         &:hover {
             color: var(--text-primary);
@@ -141,13 +207,13 @@
         }
     }
 
-   .support-route-wrapper {
+    .support-route-wrapper {
         max-height: 0;
         overflow: hidden;
         transition: max-height 0.25s ease;
 
         &.open {
-            max-height: 120px;
+            max-height: 200px;
         }
     }
 
@@ -212,11 +278,31 @@
             color: var(--text-primary);
         }
 
-        .edit        { background-color: var(--color-closed); color: var(--text-primary); margin-left: auto; }
-        .standby     { background-color: var(--color-responded); color: white; }
-        .unable      { background-color: var(--color-closed); color: white; }
-        .confirm     { background-color: var(--color-responded); color: white; }
-        .cancel      { background-color: #444; color: white; }
+        .edit {
+            background-color: var(--color-closed);
+            color: var(--text-primary);
+            margin-left: auto;
+        }
+
+        .standby {
+            background-color: var(--color-responded);
+            color: white;
+        }
+
+        .unable {
+            background-color: var(--color-closed);
+            color: white;
+        }
+
+        .confirm {
+            background-color: var(--color-responded);
+            color: white;
+        }
+
+        .cancel {
+            background-color: #444;
+            color: white;
+        }
     }
 }
 
