@@ -196,35 +196,43 @@ class Pilot:
         self.clearances[kind] = empty_clearance
         return empty_clearance
     
-    ## edge case where pilot requests expected taxi clearance then taxi clearance: 
-    ## atc cannot respond to expected since the real clearance has been requested/given.
-    def supersede_pending_expected_taxi(self) -> tuple[UpdateStepData, Clearance] | None:
-        expected_step = self.get_step("DM_136")
-        if not expected_step:
+    ## edge case where pilot requests expected taxi clearance then taxi clearance,
+    ## or taxi clearance then expected taxi clearance:
+    ## the previous pending sibling request must be closed automatically.
+    def override_pending_taxi_sibling(self, incoming_step_code: str) -> tuple[UpdateStepData, Clearance] | None:
+        if incoming_step_code not in {"DM_135", "DM_136"}:
             return None
 
-        if expected_step.status != StepStatus.REQUESTED:
+        overridden_step_code = "DM_136" if incoming_step_code == "DM_135" else "DM_135"
+        overridden_step = self.get_step(overridden_step_code)
+
+        if not overridden_step:
             return None
+
+        if overridden_step.status != StepStatus.REQUESTED:
+            return None
+
+        incoming_label = "taxi clearance request" if incoming_step_code == "DM_135" else "expected taxi request"
 
         update = UpdateStepData(
             pilot_sid=self.sid,
-            step_code="DM_136",
-            label=expected_step.label,
+            step_code=overridden_step_code,
+            label=overridden_step.label,
             status=StepStatus.CLOSED,
-            message="Expected taxi request overrided by taxi clearance request.",
+            message=f"Request overridden by {incoming_label}.",
             validated_at=get_current_timestamp(),
-            request_id=expected_step.request_id,
+            request_id=overridden_step.request_id,
             time_left=None,
         )
 
-        expected_step.apply_update(update)
+        overridden_step.apply_update(update)
         self.history.append(update)
 
-        cleared_clearance = self.clear_clearance("DM_136")
+        cleared_clearance = self.clear_clearance(overridden_step_code)
 
         logger.log_action(
             pilot_id=self.sid,
-            action_type="auto_close_expected",
+            action_type="auto_override_taxi_sibling",
             status=update.status.value,
             message=update.message,
             time_left=update.time_left

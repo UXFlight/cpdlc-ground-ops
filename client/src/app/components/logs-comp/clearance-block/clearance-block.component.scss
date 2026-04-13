@@ -318,18 +318,11 @@
     animation: fadeIn 0.25s ease;
 
     .header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 8px;
-
-        .kind {
-            font-weight: bold;
-            font-size: 0.95rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: var(--color-primary);
-        }
+        font-weight: bold;
+        font-size: 0.95rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--color-primary);
     }
 
     .selector {

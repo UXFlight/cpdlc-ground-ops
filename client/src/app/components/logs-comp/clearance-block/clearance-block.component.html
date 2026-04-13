@@ -11,7 +11,7 @@
             <span class="timestamp">{{ clearance.issued_at }}</span>
         </div>
     
-        @if (!isEditing && clearance.coords.length) {
+        @if (clearance.coords.length) {
             <button
                 type="button"
                 class="support-toggle"
@@ -48,7 +48,7 @@
 @else {
     <div class="clearance-card request-clearance">
         <div class="header">
-            <span class="kind">Generate New Clearance</span>
+            Assign Clearance
         </div>
 
         <div class="request-clearance-content">
