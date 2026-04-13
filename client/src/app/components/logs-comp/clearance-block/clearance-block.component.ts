@@ -18,7 +18,6 @@ export class ClearanceBlockComponent implements OnInit, OnDestroy {
   @Input() clearance: Clearance | null;
 
   showDetails = false;
-  isEditing = false;
 
   selectedPlane: PilotPublicView | null = null;
   selectedPlaneSubcription: Subscription;
@@ -54,7 +53,7 @@ export class ClearanceBlockComponent implements OnInit, OnDestroy {
   }
 
   removeCoord(index: number): void {
-    if (!this.isEditing || !this.clearance) return;
+    if (!this.clearance) return;
     this.clearance.coords.splice(index, 1);
   }
 
@@ -79,11 +78,6 @@ export class ClearanceBlockComponent implements OnInit, OnDestroy {
     return !!s && StepStatus.STANDBY == s.status;
   }
 
-  get isEditable(): boolean {
-    const s = this.step;
-    return !!s && ![StepStatus.LOADED, StepStatus.EXECUTED].includes(s.status) && this.clearance?.kind !== 'expected';
-  }
-
   get defaultMessage(): string {
     if (!this.clearance) return '';
     const label = this.clearance.kind === 'expected' ? 'expected taxi' : 'taxi clearance';
@@ -96,7 +90,8 @@ export class ClearanceBlockComponent implements OnInit, OnDestroy {
 
   requestClearance(): void {
     if (!this.selectedPilotSid || !this.requestedClearanceKind) return;
-    this.mainPageService.fetchClearance(this.selectedPilotSid, this.requestedClearanceKind)
+    this.mainPageService.fetchClearance(this.selectedPilotSid, this.requestedClearanceKind);
+    this.showDetails = true;
   }
 
   // requests to server
