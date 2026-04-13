@@ -284,10 +284,7 @@ export class MainPageService {
     ];
   
     for (const [field, errorMsg] of requiredFields) {
-      if (!payload[field]) {
-        this.communicationService.handleError(errorMsg);
-        return;
-      }
+      if (!payload[field]) return this.communicationService.handleError(errorMsg);
     }
   
     this.clientSocketService.send('atcResponse', payload);
