@@ -1,5 +1,5 @@
 import { NgClass } from '@angular/common';
-import { Component, Input, OnChanges, OnDestroy, OnInit, SimpleChanges } from '@angular/core';
+import { Component, Input, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Clearance, PilotPublicView } from '@app/interfaces/Publics';
 import { StepStatus } from '@app/interfaces/StepStatus';
@@ -14,12 +14,11 @@ import { Subscription } from 'rxjs';
   templateUrl: './clearance-block.component.html',
   styleUrl: './clearance-block.component.scss'
 })
-export class ClearanceBlockComponent implements OnInit, OnDestroy, OnChanges {
+export class ClearanceBlockComponent implements OnInit, OnDestroy {
   @Input() clearance: Clearance | null;
 
   showDetails = false;
   isEditing = false;
-  editableInstruction: string = '';
 
   selectedPlane: PilotPublicView | null = null;
   selectedPlaneSubcription: Subscription;
@@ -42,12 +41,6 @@ export class ClearanceBlockComponent implements OnInit, OnDestroy, OnChanges {
     this.selectedPlaneSubcription?.unsubscribe();
   }
 
-  ngOnChanges(changes: SimpleChanges): void {
-    if (changes['clearance'] && this.clearance) {
-      this.editableInstruction = this.clearance.instruction || '';
-    }
-  }
-
   configSubscription(): void {
     this.selectedPlaneSubcription = this.airportMapService.selectedPlane$.subscribe((plane) => {
       this.selectedPlane = plane;
@@ -58,22 +51,6 @@ export class ClearanceBlockComponent implements OnInit, OnDestroy, OnChanges {
 
   toggleDetails(): void {
     this.showDetails = !this.showDetails;
-  }
-
-  confirmEdit(): void {
-    if (!this.clearance) return;
-    const updatedClearance: Clearance = {
-      ...this.clearance,
-      instruction: this.editableInstruction.trim()
-    };
-    this.isEditing = false;
-    console.log('Updated Clearance:', updatedClearance);
-  }
-
-  cancelEdit(): void {
-    if (!this.clearance) return;
-    this.editableInstruction = this.clearance.instruction;
-    this.isEditing = false;
   }
 
   removeCoord(index: number): void {

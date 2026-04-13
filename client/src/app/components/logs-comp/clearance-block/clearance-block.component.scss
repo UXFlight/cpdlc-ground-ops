@@ -1,7 +1,7 @@
 .clearance-card {
     border: 1px solid transparent;
     border-radius: 10px;
-    padding: 0.5rem 1rem;
+    padding: 1rem;
     background-color: var(--bg-container);
     color: var(--text-primary);
     display: flex;
@@ -278,12 +278,6 @@
             color: var(--text-primary);
         }
 
-        .edit {
-            background-color: var(--color-closed);
-            color: var(--text-primary);
-            margin-left: auto;
-        }
-
         .standby {
             background-color: var(--color-responded);
             color: white;
@@ -314,7 +308,7 @@
 .clearance-card.request-clearance {
     border: 2px dashed var(--text-muted);
     background-color: var(--bg-container);
-    padding: 1rem 1rem 1.25rem;
+    padding: 1rem;
     border-radius: 10px;
     display: flex;
     flex-direction: column;
