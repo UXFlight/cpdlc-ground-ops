@@ -18,6 +18,15 @@ class StepStatus(Enum):
     TIMEOUT = "timeout"
     ERROR = "error"
 
+ACTIVE_TAXI_STEP_STATUSES = {
+    StepStatus.STANDBY,
+    StepStatus.REQUESTED,
+    StepStatus.RESPONDED,
+    StepStatus.NEW,
+    StepStatus.LOADED,
+    StepStatus.EXECUTED,
+}
+
 # POSSIBLE REQUESTS CODES
 class StepCode(Enum):
     EXPECTED_TAXI_CLEARANCE = "DM_136"

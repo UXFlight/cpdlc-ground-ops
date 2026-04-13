@@ -9,7 +9,7 @@ from app.utils.parse import step_code_to_clearance_type
 from app.utils.time_utils import get_current_timestamp, get_formatted_time
 from app.managers import TimerManager
 from app.classes.socket import SocketService
-from app.utils.types import Clearance, ClearanceType, LocationInfo, Plane, SocketError, StepStatus, UpdateStepData, PilotPublicView
+from app.utils.types import ACTIVE_TAXI_STEP_STATUSES, Clearance, ClearanceType, LocationInfo, Plane, SocketError, StepStatus, UpdateStepData, PilotPublicView
 
 DEFAULT_LOCATION: LocationInfo = {
     "coord": (0.0, 0.0),
@@ -198,41 +198,68 @@ class Pilot:
     
     ## edge case where pilot requests expected taxi clearance then taxi clearance,
     ## or taxi clearance then expected taxi clearance:
-    ## the previous pending sibling request must be closed automatically.
-    def override_pending_taxi_sibling(self, incoming_step_code: str) -> tuple[UpdateStepData, Clearance] | None:
+    ## the expected clearance pending request must be closed automatically.
+    def override_pending_expected_taxi(self, incoming_step_code: str) -> tuple[UpdateStepData, Clearance] | None:
         if incoming_step_code not in {"DM_135", "DM_136"}:
             return None
 
-        overridden_step_code = "DM_136" if incoming_step_code == "DM_135" else "DM_135"
-        overridden_step = self.get_step(overridden_step_code)
-
-        if not overridden_step:
+        expected_step = self.get_step("DM_136")
+        if not expected_step:
             return None
 
-        if overridden_step.status != StepStatus.REQUESTED:
-            return None
+        if incoming_step_code == "DM_135":
+            if expected_step.status not in ACTIVE_TAXI_STEP_STATUSES:
+                return None
 
-        incoming_label = "taxi clearance request" if incoming_step_code == "DM_135" else "expected taxi request"
+            update = UpdateStepData(
+                pilot_sid=self.sid,
+                step_code="DM_136",
+                label=expected_step.label,
+                status=StepStatus.CLOSED,
+                message="Expected taxi request overridden by taxi clearance request.",
+                validated_at=get_current_timestamp(),
+                request_id=expected_step.request_id,
+                time_left=None,
+            )
+
+            expected_step.apply_update(update)
+            self.history.append(update)
+
+            cleared_clearance = self.clear_clearance("DM_136")
+
+            logger.log_action(
+                pilot_id=self.sid,
+                action_type="auto_close_expected",
+                status=update.status.value,
+                message=update.message,
+                time_left=update.time_left
+            )
+
+            return update, cleared_clearance
+
+        taxi_step = self.get_step("DM_135")
+        if not taxi_step or taxi_step.status not in ACTIVE_TAXI_STEP_STATUSES:
+            return None
 
         update = UpdateStepData(
             pilot_sid=self.sid,
-            step_code=overridden_step_code,
-            label=overridden_step.label,
+            step_code="DM_136",
+            label=expected_step.label,
             status=StepStatus.CLOSED,
-            message=f"Request overridden by {incoming_label}.",
+            message="Expected taxi request ignored as taxi clearance request is already pending.",
             validated_at=get_current_timestamp(),
-            request_id=overridden_step.request_id,
+            request_id=expected_step.request_id,
             time_left=None,
         )
 
-        overridden_step.apply_update(update)
+        expected_step.apply_update(update)
         self.history.append(update)
 
-        cleared_clearance = self.clear_clearance(overridden_step_code)
+        cleared_clearance = self.clear_clearance("DM_136")
 
         logger.log_action(
             pilot_id=self.sid,
-            action_type="auto_override_taxi_sibling",
+            action_type="auto_close_expected",
             status=update.status.value,
             message=update.message,
             time_left=update.time_left
