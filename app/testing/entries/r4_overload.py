@@ -57,7 +57,7 @@ def _start_sys_monitor(enabled: bool, interval_s: float) -> tuple[threading.Even
     if not enabled:
         return stop_event, samples
     try:
-        import psutil  # type: ignore
+        import psutil  
     except Exception:
         print("[R4] psutil not available; skipping CPU/RAM monitoring.")
         return stop_event, samples

@@ -1,5 +1,5 @@
 try:
-    import eventlet  # type: ignore
+    import eventlet  
     eventlet.monkey_patch()
 except Exception:
     eventlet = None

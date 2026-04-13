@@ -1,4 +1,4 @@
-import ingescape as igs  # type: ignore
+import ingescape as igs  
 from app.utils.constants import REQUEST_OUTPUTS, ACTION_OUTPUTS
 import sys
 
