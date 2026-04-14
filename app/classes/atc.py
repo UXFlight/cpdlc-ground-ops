@@ -1,17 +1,16 @@
 from app.classes.pilot import Pilot
 from app.utils.time_utils import get_current_timestamp
 from app.utils.type_validation import validate_atc_payload
-from app.utils.types import AtcPublicView, SocketError, StepStatus, UpdateStepData
+from app.utils.types import AtcPublicView, StepStatus, UpdateStepData
+from app.utils.constants import ACTION_WORKFLOW, DEFAULT_TIMER_DURATION, PUSHBACK, PUSHBACK_DIRECTIONS, STANDBY_TIMER_DURATION, AFFIRM, STANDBY, UNABLE
 
 class Atc:
     def __init__(self, atc_id: str):
         self.atc_id = atc_id
-        self.selected_pilot: str = ''
     
     def to_public(self) -> AtcPublicView:
         return {
             "sid": self.atc_id,
-            "selectedPilot": self.selected_pilot
         }
         
     def handle_response(self, payload: dict, pilot: Pilot) -> UpdateStepData:
@@ -25,20 +24,13 @@ class Atc:
         if step.status == StepStatus.NEW:
             raise ValueError(f"Cannot respond to step {step_code} in status NEW")
 
-        match action:
-            case "affirm":
-                new_status = StepStatus.NEW
-                time_left = 90.0
-            case "standby":
-                new_status = StepStatus.STANDBY
-                time_left = 300.0
-            case "unable":
-                new_status = StepStatus.UNABLE
-                time_left = None
-            case _:
-                raise ValueError(f"Invalid action: {action}")
+        workflow = ACTION_WORKFLOW.get(action)
+        if workflow is None:
+            raise ValueError(f"Invalid action: {action}")
 
-        if step_code == "DM_131" and direction in {"LEFT", "RIGHT"}:
+        new_status, time_left = workflow
+
+        if step_code == PUSHBACK and direction in PUSHBACK_DIRECTIONS:
             step.label = f"Pushback {direction}"
             if direction not in message.upper():
                 message = f"{message} (Direction: {direction})"
@@ -53,7 +45,7 @@ class Atc:
             request_id=request_id,
             time_left=time_left
         )
-        
+            
     def validate_clearance_request(self, pilot: Pilot, kind: str):
         if not pilot.plane["spawn_pos"]:
             raise ValueError(f"Pilot {pilot.sid} has no initial position")
