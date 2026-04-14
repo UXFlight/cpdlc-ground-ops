@@ -18,8 +18,6 @@ from app.testing.observability.system_metrics import SystemMetrics
 from app.testing.observability.system_snapshot import register_system_snapshot
 from app.routes import general
 
-from app.classes.agent import Echo
-
 import logging
 logging.getLogger('werkzeug').setLevel(logging.ERROR)
 
@@ -53,8 +51,6 @@ if __name__ == '__main__':
     selected_icao: str = args.icao.upper()
 
     app, socketio = create_app()
-    # agent = Echo()
-    # Echo.start_ingescape_agent() #! to start ingescape agent
     
     airport_map_manager = AirportMapManager(selected_icao)
     metrics_store = SystemMetrics()
