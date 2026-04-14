@@ -27,15 +27,6 @@ ACTIVE_TAXI_STEP_STATUSES = {
     StepStatus.CLOSED
 }
 
-# POSSIBLE REQUESTS CODES
-class StepCode(Enum):
-    EXPECTED_TAXI_CLEARANCE = "DM_136"
-    ENGINE_STARTUP = "DM_134"
-    PUSHBACK = "DM_131"
-    TAXI_CLEARANCE = "DM_135"
-    DE_ICING = "DM_127"
-    VOICE_CONTACT = "DM_20"
-
 # ===============================
 
 # PAYLOAD TO UPDATE STEP
