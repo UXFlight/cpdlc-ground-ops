@@ -77,3 +77,8 @@ export interface ClearancePayload {
     pilot_sid: string;
     clearance: Clearance;
 }
+
+export interface ClearancesCancelledPayload {
+  pilot_sid: string;
+  clearances: Record<ClearanceType, Clearance>;
+}

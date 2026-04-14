@@ -25,6 +25,8 @@ export class ClearanceBlockComponent implements OnInit, OnDestroy {
   selectedPilotSid: string = '';
   response: string = '';
 
+  showCancelRequest = false;
+
   requestedClearanceKind: 'taxi' | 'expected' | '' = '';
 
   constructor(
@@ -91,7 +93,14 @@ export class ClearanceBlockComponent implements OnInit, OnDestroy {
   requestClearance(): void {
     if (!this.selectedPilotSid || !this.requestedClearanceKind) return;
     this.mainPageService.fetchClearance(this.selectedPilotSid, this.requestedClearanceKind);
+    this.showCancelRequest = true;
     this.showDetails = true;
+  }
+
+  cancelClearance(): void {
+      if (!this.selectedPilotSid || !this.requestedClearanceKind) return;
+      this.mainPageService.cancelClearance(this.selectedPilotSid)
+      this.showCancelRequest = false;
   }
 
   // requests to server

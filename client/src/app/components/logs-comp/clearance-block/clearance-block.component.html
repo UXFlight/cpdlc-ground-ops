@@ -36,7 +36,17 @@
     
         <div class="actions">
             @if (isRespondableStep) {
-                <button class="btn unable" [title]="'Reject pilot\'s request'" (click)="emitAction('unable')">unable</button>
+                @if (showCancelRequest) {
+                    <button 
+                        class="btn cancel-btn"
+                        [disabled]="!selectedPilotSid"
+                        (click)="cancelClearance()"
+                    >
+                        Cancel
+                    </button>
+                } @else {
+                    <button class="btn unable" [title]="'Reject pilot\'s request'" (click)="emitAction('unable')">unable</button>
+                }
                 @if (!isStandby) {
                     <button class="btn standby" [title]="'Makes pilot wait for Clearance'" (click)="emitAction('standby')">standby</button>
                 }

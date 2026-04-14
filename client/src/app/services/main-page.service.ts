@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, map, Observable } from 'rxjs';
-import { AckUpdatePayload, ClearancePayload, ClearanceType, PilotPublicView, StepPublicView } from '@app/interfaces/Publics';
+import { AckUpdatePayload, ClearancePayload, ClearancesCancelledPayload, ClearanceType, PilotPublicView, StepPublicView } from '@app/interfaces/Publics';
 import { ClientSocketService } from './client-socket.service';
 import { CommunicationService, ErrorMessage } from './communication.service';
 import { Atc } from '@app/interfaces/Atc';
@@ -59,6 +59,7 @@ export class MainPageService {
     this.clientSocketService.listen<string>('pilot_disconnected', this.onPilotDisconnect)
     this.clientSocketService.listen<AckUpdatePayload>('new_request', this.onNewRequest)
     this.clientSocketService.listen<ClearancePayload>('proposedClearance', this.updatePilotClearance);
+    this.clientSocketService.listen<ClearancesCancelledPayload>('clearancesCancelled', this.handleCancelClearance);
 
     // atc events 
     this.clientSocketService.listen<Atc[]>('atc_list', this.onAtcListUpdate);
@@ -222,14 +223,26 @@ export class MainPageService {
   }
 
 
-  private updatePilotClearance = (payload : ClearancePayload) => {
+  private updatePilotClearance = (payload: ClearancePayload) => {
     const currentPreviews = this.pilotsPreviewsSubject.getValue();
     const pilotIndex = currentPreviews.findIndex(p => p.sid === payload.pilot_sid);
     if (pilotIndex === -1) return;
     const pilot = currentPreviews[pilotIndex];
     if (!pilot) return;
-    const kind = payload.clearance.kind
+    const kind = payload.clearance.kind;
     pilot.clearances[kind] = payload.clearance;
+    this.pilotsPreviewsSubject.next([...currentPreviews]);
+    if (this.selectedPilotSubject.getValue()?.sid === payload.pilot_sid) this.selectedPilotSubject.next(pilot);
+  }
+
+  private handleCancelClearance = (payload: ClearancesCancelledPayload) => {
+    console.log(payload)
+    const currentPreviews = this.pilotsPreviewsSubject.getValue();
+    const pilotIndex = currentPreviews.findIndex(p => p.sid === payload.pilot_sid);
+    if (pilotIndex === -1) return;
+    const pilot = currentPreviews[pilotIndex];
+    if (!pilot) return;
+    pilot.clearances = payload.clearances;
     this.pilotsPreviewsSubject.next([...currentPreviews]);
     if (this.selectedPilotSubject.getValue()?.sid === payload.pilot_sid) this.selectedPilotSubject.next(pilot);
   }
@@ -271,6 +284,10 @@ export class MainPageService {
 
   fetchClearance(pilot_sid: string, kind: ClearanceType) {
     return this.clientSocketService.send('getClearance', { pilot_sid, kind });
+  }
+
+  cancelClearance(pilot_sid:string) {
+      return this.clientSocketService.send('cancelClearance', pilot_sid);
   }
 
   // SEND
