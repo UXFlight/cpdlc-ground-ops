@@ -70,6 +70,8 @@ def _plot_latency(points: list[dict], plot_dir: str) -> None:
     plt.legend(fontsize=11)
     plt.tight_layout()
     plt.savefig(os.path.join(plot_dir, "R3_latency_vs_load.png"), dpi=200)
+    plt.savefig(os.path.join(plot_dir, "R3_latency_vs_load.pdf"))
+    plt.close()
 
 def _plot_server(points: list[dict], plot_dir: str) -> None:
     import matplotlib.pyplot as plt
@@ -89,6 +91,8 @@ def _plot_server(points: list[dict], plot_dir: str) -> None:
     plt.legend(fontsize=11)
     plt.tight_layout()
     plt.savefig(os.path.join(plot_dir, "R3_server_processing_vs_load.png"), dpi=200)
+    plt.savefig(os.path.join(plot_dir, "R3_server_processing_vs_load.pdf"))
+    plt.close()
 
 
 def main() -> None:

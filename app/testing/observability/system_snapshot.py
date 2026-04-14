@@ -15,9 +15,7 @@ def _summarize_state(pilots: list, atcs: list) -> dict:
             if update.pilot_sid != p.sid:
                 issues.append(f"history_pilot_mismatch:{p.sid}")
                 break
-    for atc in atcs:
-        if atc.selected_pilot and atc.selected_pilot not in pilot_ids:
-            issues.append(f"invalid_selected_pilot:{atc.atc_id}")
+        
     return {
         "pilot_count": len(pilots),
         "atc_count": len(atcs),

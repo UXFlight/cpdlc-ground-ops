@@ -4,8 +4,9 @@ import uuid
 from app.classes.step import Step
 from app.managers.log_manager import logger
 from app.utils.color import set_pilot_color
-from app.utils.constants import ACTION_DEFINITIONS, DEFAULT_STEPS
+from app.utils.constants import ACTION_DEFINITIONS, CANCEL, CLEARANCE_CODES, DEFAULT_STEPS, EXPECTED_TAXI_CLEARANCE, PUSHBACK, STANDBY, STANDBY_TIMER_DURATION, TAXI_CLEARANCE, UNABLE, WILCO, get_valid_transitions
 from app.utils.parse import step_code_to_clearance_type
+from app.utils.socket_constants import ATC_ROOM
 from app.utils.time_utils import get_current_timestamp, get_formatted_time
 from app.managers import TimerManager
 from app.classes.socket import SocketService
@@ -104,9 +105,9 @@ class Pilot:
         if not step:
             raise ValueError(f"Unknown step: {request_type}")
         
-        if step.step_code == "DM_131":
+        if step.step_code == PUSHBACK:
             if not data.get("direction"):
-                raise ValueError("Pushback direction is required for DM_131")
+                raise ValueError("Pushback direction is required.")
             step.label = f"Pushback {data['direction'].upper()}"
 
         if step.status in {
@@ -199,20 +200,20 @@ class Pilot:
     ## or taxi clearance then expected taxi clearance:
     ## the expected clearance pending request must be closed automatically.
     def override_pending_expected_taxi(self, incoming_step_code: str) -> tuple[UpdateStepData, Clearance] | None:
-        if incoming_step_code not in {"DM_135", "DM_136"}:
+        if incoming_step_code not in CLEARANCE_CODES:
             return None
 
-        expected_step = self.get_step("DM_136")
+        expected_step = self.get_step(EXPECTED_TAXI_CLEARANCE)
         if not expected_step:
             return None
 
-        if incoming_step_code == "DM_135":
+        if incoming_step_code == TAXI_CLEARANCE:
             if expected_step.status not in ACTIVE_TAXI_STEP_STATUSES:
                 return None
 
             update = UpdateStepData(
                 pilot_sid=self.sid,
-                step_code="DM_136",
+                step_code=EXPECTED_TAXI_CLEARANCE,
                 label=expected_step.label,
                 status=StepStatus.CLOSED,
                 message="Expected taxi request overridden by taxi clearance request.",
@@ -224,7 +225,7 @@ class Pilot:
             expected_step.apply_update(update)
             self.history.append(update)
 
-            cleared_clearance = self.clear_clearance("DM_136")
+            cleared_clearance = self.clear_clearance(EXPECTED_TAXI_CLEARANCE)
 
             logger.log_action(
                 pilot_id=self.sid,
@@ -236,13 +237,13 @@ class Pilot:
 
             return update, cleared_clearance
 
-        taxi_step = self.get_step("DM_135")
+        taxi_step = self.get_step(TAXI_CLEARANCE)
         if not taxi_step or taxi_step.status not in ACTIVE_TAXI_STEP_STATUSES:
             return None
 
         update = UpdateStepData(
             pilot_sid=self.sid,
-            step_code="DM_136",
+            step_code=EXPECTED_TAXI_CLEARANCE,
             label=expected_step.label,
             status=StepStatus.CLOSED,
             message="Expected taxi request ignored as taxi clearance request is already pending.",
@@ -254,7 +255,7 @@ class Pilot:
         expected_step.apply_update(update)
         self.history.append(update)
 
-        cleared_clearance = self.clear_clearance("DM_136")
+        cleared_clearance = self.clear_clearance(EXPECTED_TAXI_CLEARANCE)
 
         logger.log_action(
             pilot_id=self.sid,
@@ -279,8 +280,11 @@ class Pilot:
         config = ACTION_DEFINITIONS.get(action)
         if not config:
             raise ValueError(f"Unknown action: {action} for {request_type}")
+        
+        has_required_type = config.get("has_required_type")
+        allowed_types = config.get("allowed_types", [])
 
-        if config.get("requiredType") and request_type not in config.get("allowedTypes", []):
+        if has_required_type and request_type not in allowed_types:
             raise ValueError(f"Invalid requestType for action '{action}'", request_type)
 
         final_type = config.get("fixedType", request_type)
@@ -288,38 +292,30 @@ class Pilot:
         if not step:
             raise ValueError(f"Unknown step: {final_type}")
 
-        valid_transitions = {
-            "new": {"load", "wilco", "standby", "unable"},
-            "loaded": {"execute", "cancel"} if request_type == "DM_135" else {"wilco", "standby", "unable"},
-            "executed": {"wilco", "standby", "unable"},
-            "standby": {"wilco", "standby", "unable"},
-            "standby": {"wilco", "standby", "unable"},
-        }
+        
 
+        valid_transitions = get_valid_transitions(final_type)
         allowed = valid_transitions.get(step.status.value, set())
         if action not in allowed:
             raise ValueError(f"Action '{action}' not allowed for step '{final_type}' in status '{step.status.value}'")
 
-        if action in {"wilco", "cancel", "unable"}:
+        if action in {WILCO, CANCEL, UNABLE}:
             self.timer_manager.stop_timer(final_type)
-            time_left = None
-        elif action == "standby":
-            time_left = 300
-        else:
-            time_left = step.time_left
+            step.time_left = None
+        elif action == STANDBY:
+            step.time_left = STANDBY_TIMER_DURATION
 
-        status_str = config["status"]
-        status_enum = StepStatus(status_str)
+        status = config["status"]
 
         update = UpdateStepData(
             pilot_sid=self.sid,
             step_code=final_type,
             label=step.label,
-            status=status_enum,
+            status=status,
             message=step.message or '',
             validated_at=get_current_timestamp(),
             request_id=step.request_id,
-            time_left=time_left
+            time_left=step.time_left
         )
 
         step.apply_update(update)
@@ -397,7 +393,7 @@ class Pilot:
             "timeLeft": update.time_left,
         }, room=self.sid)
         
-        socket.send("new_request", update.to_atc_payload(), room="atc_room")
+        socket.send("new_request", update.to_atc_payload(), room=ATC_ROOM)
 
         # gss_client.send_update_step(update.to_dict()) #keeping track of gss
         logger.log_event(self.sid, "TIMEOUT", f"{step_code} expired.")

@@ -58,6 +58,9 @@ def plot_r1_sweep(outdir: str, rows: list[dict]) -> str | None:
     plt.legend()
     plt.grid(True, linestyle="--", alpha=0.4)
     out = os.path.join(root, "R1_latency_sweep.png")
+    out_pdf = os.path.join(root, "R1_latency_sweep.pdf")
     plt.tight_layout()
     plt.savefig(out, dpi=200, bbox_inches="tight")
+    plt.savefig(out_pdf, bbox_inches="tight")
+    plt.close()
     return out

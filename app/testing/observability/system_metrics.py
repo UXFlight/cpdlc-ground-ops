@@ -1,6 +1,8 @@
 from collections import deque
 from typing import Deque, Dict, Optional, List
 
+from app.utils.socket_constants import ATC_ROOM
+
 METRICS_WINDOW = 1000
 
 
@@ -32,7 +34,7 @@ class SystemMetrics:
             self.end_to_end_ms.append((end_ts - client_sent_ts) * 1000.0)
 
     def record_emit(self, event: str, room: Optional[str]) -> None:
-        if room == "atc_room":
+        if room == ATC_ROOM:
             self.delivered_counts["atc"] = self.delivered_counts.get("atc", 0) + 1
             return
         if room:

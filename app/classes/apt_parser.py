@@ -75,7 +75,7 @@ class APTParser:
                         "width": float(tokens[6]),
                     })
                 except Exception as e:
-                    print(f"[APTParser] Error parsing helipad: {tokens} → {e}")
+                    print(f"[APTParser] Error parsing helipad: {tokens} => {e}")
         return helipads
 
     def _parse_taxiways(self, airport) -> List[Taxiway]:
@@ -117,7 +117,7 @@ class APTParser:
                             "name": " ".join(str(t) for t in tokens[6:]) if len(tokens) > 6 else "Unnamed"                        
                         })
                     except Exception as e:
-                        print(f"[APTParser] Skipping bad parking line: {tokens} → {e}")
+                        print(f"[APTParser] Skipping bad parking line: {tokens} => {e}")
         return parking
     
     def sanitize_parking_type(self, value: str) -> ParkingType:
