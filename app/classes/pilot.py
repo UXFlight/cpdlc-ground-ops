@@ -10,7 +10,7 @@ from app.utils.socket_constants import ATC_ROOM
 from app.utils.time_utils import get_current_timestamp, get_formatted_time
 from app.managers import TimerManager
 from app.classes.socket import SocketService
-from app.utils.types import ACTIVE_TAXI_STEP_STATUSES, Clearance, ClearanceType, LocationInfo, Plane, SocketError, StepStatus, UpdateStepData, PilotPublicView
+from app.utils.types import ACTIVE_TAXI_STEP_STATUSES, Clearance, ClearanceType, LocationInfo, Plane, SocketErrorPayload, StepStatus, UpdateStepData, PilotPublicView
 
 DEFAULT_LOCATION: LocationInfo = {
     "coord": (0.0, 0.0),
@@ -332,8 +332,14 @@ class Pilot:
         return update
 
     ## === Error formatting ===
-    def _error(self, context: str, message: str, request_type: Optional[str] = None,
-               status: str = "error", time_left: Optional[float] = None) -> SocketError:
+    def _error(
+            self, 
+            context: str, 
+            message: str, 
+            request_type: Optional[str] = None,
+            status: str = "error", 
+            time_left: Optional[float] = None
+        ) -> SocketErrorPayload:
         logger.log_error(
             pilot_id=self.sid,
             context=f"{context}:{self.sid}",
@@ -342,14 +348,12 @@ class Pilot:
         )
 
         return {
-            "event": "error",
-            "payload": {
                 "requestType": request_type,
                 "status": status,
                 "message": message,
                 "timestamp": get_current_timestamp()
             }
-        }
+        
 
     ## === Timer ===
     def start_timer_for_step(self, step: Step, socket: SocketService):

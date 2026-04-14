@@ -1,0 +1,32 @@
+## == Socket Rooms
+ATC_ROOM="atc_room"
+
+## == Listen Events
+CONNECT_LISTEN="connect"
+DISCONNECT_LISTEN="disconnect"
+SEND_REQUEST_LISTEN="sendRequest"
+CANCEL_REQUEST_LISTEN="cancelRequest"
+SEND_ACTION_LISTEN="sendAction"
+GET_ACTIVITY_LISTEN="getActivity"
+GET_PILOTS_LISTEN="getPilotList"
+GET_AIRPORT_MAP_DATA_LISTEN="getAirportMapData"
+GET_CLEARANCE_LISTEN="getClearance"
+CANCEL_CLEARANCE_LISTEN="cancelClearance"
+ATC_RESPONSE_LISTEN="atcResponse"
+
+## == Send Events
+CONNECTED_TO_ATC_SEND="connectedToAtc"
+PILOT_DISCONNECTED_SEND="pilot_disconnected"
+REQUEST_ACK_SEND="requestAcknowledged"
+REQUEST_CANCELLED_SEND="requestCancelled"
+ACTION_ACK_SEND="actionAcknowledged"
+PROPOSED_CLEARANCE_SEND="proposedClearance"
+ACTIVITY_INFO_SEND="activityInfoResponse"
+ATC_RESPONSE_TO_PILOT="atcResponseToPilot"
+PILOT_CONNECTED_SEND="pilot_connected"
+PILOT_LIST_SEND="pilot_list"
+ATC_LIST_SEND="atc_list"
+NEW_REQUEST_SEND="new_request"
+AIRPORT_MAP_DATA_SEND="airport_map_data"
+CLEARANCE_CANCELLED="clearancesCancelled"
+ERROR_SEND="error"

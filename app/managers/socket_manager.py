@@ -3,21 +3,36 @@ from typing import TYPE_CHECKING, Any
 from app.utils.constants import CANCEL, CLEARANCE_CODES, EXPECTED_TAXI_CLEARANCE, TAXI_CLEARANCE, UNABLE
 from app.utils.parse import interpolate_request_message, parse_status
 from app.utils.socket_constants import (
+    ACTION_ACK_SEND,
+    ACTIVITY_INFO_SEND,
+    AIRPORT_MAP_DATA_SEND,
+    ATC_LIST_SEND,
     ATC_RESPONSE_LISTEN,
+    ATC_RESPONSE_TO_PILOT,
     ATC_ROOM,
     CANCEL_CLEARANCE_LISTEN,
     CANCEL_REQUEST_LISTEN,
+    CLEARANCE_CANCELLED,
     CONNECT_LISTEN,
+    CONNECTED_TO_ATC_SEND,
     DISCONNECT_LISTEN,
+    ERROR_SEND,
     GET_ACTIVITY_LISTEN,
     GET_AIRPORT_MAP_DATA_LISTEN,
     GET_CLEARANCE_LISTEN,
     GET_PILOTS_LISTEN,
+    NEW_REQUEST_SEND,
+    PILOT_CONNECTED_SEND,
+    PILOT_DISCONNECTED_SEND,
+    PILOT_LIST_SEND,
+    PROPOSED_CLEARANCE_SEND,
+    REQUEST_ACK_SEND,
+    REQUEST_CANCELLED_SEND,
     SEND_ACTION_LISTEN,
     SEND_REQUEST_LISTEN,
 )
 from app.utils.time_utils import get_current_timestamp, get_formatted_time
-from app.utils.types import Clearance, ClearanceType, PilotConnectInfo, PilotPublicView, SocketError, StepStatus, UpdateStepData
+from app.utils.types import Clearance, ClearanceType, PilotConnectInfo, PilotPublicView, SocketErrorPayload, StepStatus, UpdateStepData
 from app.managers.log_manager import logger
 from app.classes.clearance import ClearanceEngine
 
@@ -84,10 +99,10 @@ class SocketManager:
                 "connectedSince": self.atc_manager.connection_info["connectedSince"],
                 "sid": sid,
             }
-            self._emit(sid, "connectedToAtc", connected_payload)
+            self._emit(sid, CONNECTED_TO_ATC_SEND, connected_payload)
 
             if self.atc_manager.has_any():
-                self._emit(ATC_ROOM, "pilot_connected", public_view)
+                self._emit(ATC_ROOM, PILOT_CONNECTED_SEND, public_view)
 
         elif role == 1:
             self.atc_manager.create(sid)
@@ -95,10 +110,10 @@ class SocketManager:
             logger.log_event(pilot_id=sid, event_type="SOCKET", message=f"ATC connected: {sid}")
 
             pilot_list_data = self.get_adjusted_pilot_list()
-            self._emit(sid, "pilot_list", pilot_list_data)
+            self._emit(sid, PILOT_LIST_SEND, pilot_list_data)
 
             atc_list = self.atc_manager.get_all()
-            self._emit(ATC_ROOM, "atc_list", atc_list)
+            self._emit(ATC_ROOM, ATC_LIST_SEND, atc_list)
 
         else:
             logger.log_event(pilot_id=sid, event_type="SOCKET", message="Unknown role -- disconnecting")
@@ -117,7 +132,7 @@ class SocketManager:
 
                 if self.atc_manager.has_any():
                     try:
-                        self._emit(ATC_ROOM, "pilot_disconnected", sid)
+                        self._emit(ATC_ROOM, PILOT_DISCONNECTED_SEND, sid)
                     except Exception as e:
                         logger.log_error(pilot_id=sid, context="DISCONNECT", error=str(e))
 
@@ -126,7 +141,7 @@ class SocketManager:
                 self.socket.leave_room(sid, room=ATC_ROOM)
                 atc_list = self.atc_manager.get_all()
                 try:
-                    self._emit(ATC_ROOM, "atc_list", atc_list, skip_sid=sid)
+                    self._emit(ATC_ROOM, ATC_LIST_SEND, atc_list, skip_sid=sid)
                 except Exception as e:
                     logger.log_error(pilot_id=sid, context="DISCONNECT", error=str(e))
                 logger.log_event(pilot_id=sid, event_type="SOCKET", message=f"ATC disconnected: {sid}")
@@ -151,24 +166,24 @@ class SocketManager:
                 overridden_update, cleared_clearance = override
 
                 if request_type == TAXI_CLEARANCE:
-                    self._emit(sid, "actionAcknowledged", overridden_update.to_ack_payload())
+                    self._emit(sid, ACTION_ACK_SEND, overridden_update.to_ack_payload())
 
-                    self._emit(ATC_ROOM, "new_request", overridden_update.to_atc_payload())
+                    self._emit(ATC_ROOM, NEW_REQUEST_SEND, overridden_update.to_atc_payload())
 
-                    self._emit(sid, "proposedClearance", {
+                    self._emit(sid, PROPOSED_CLEARANCE_SEND, {
                         "kind": cleared_clearance["kind"],
                         "instruction": cleared_clearance["instruction"],
                     })
 
-                    self._emit(ATC_ROOM, "proposedClearance", {
+                    self._emit(ATC_ROOM, PROPOSED_CLEARANCE_SEND, {
                         "pilot_sid": pilot.sid,
                         "clearance": cleared_clearance,
                     })
 
                 elif request_type == EXPECTED_TAXI_CLEARANCE:
-                    self._emit(sid, "requestAcknowledged", overridden_update.to_ack_payload())
+                    self._emit(sid, REQUEST_ACK_SEND, overridden_update.to_ack_payload())
 
-                    self._emit(sid, "proposedClearance", {
+                    self._emit(sid, PROPOSED_CLEARANCE_SEND, {
                         "kind": cleared_clearance["kind"],
                         "instruction": cleared_clearance["instruction"],
                     })
@@ -184,7 +199,7 @@ class SocketManager:
             step_payload: UpdateStepData = pilot.handle_send_request(data)
             step_code = step_payload.step_code
 
-            self._emit(sid, "requestAcknowledged", step_payload.to_ack_payload())
+            self._emit(sid, REQUEST_ACK_SEND, step_payload.to_ack_payload())
 
             message = interpolate_request_message(step_code, pilot, data.get("direction"))
             step_payload.message = message
@@ -206,12 +221,12 @@ class SocketManager:
 
                 pilot.set_clearance(clearance)
 
-                self._emit(ATC_ROOM, "proposedClearance", {
+                self._emit(ATC_ROOM, PROPOSED_CLEARANCE_SEND, {
                     "pilot_sid": pilot.sid,
                     "clearance": clearance,
                 })
 
-            self._emit(ATC_ROOM, "new_request", step_payload.to_atc_payload())
+            self._emit(ATC_ROOM, NEW_REQUEST_SEND, step_payload.to_atc_payload())
 
             self.metrics.record_event(
                 "pilot",
@@ -221,8 +236,8 @@ class SocketManager:
             )
 
         except Exception as e:
-            error_payload: SocketError = pilot._error("REQUEST", str(e), data.get("requestType"))
-            self._emit(sid, error_payload["event"], error_payload["payload"])
+            error_payload: SocketErrorPayload = pilot._error("REQUEST", str(e), data.get("requestType"))
+            self._emit(sid, ERROR_SEND, error_payload)
             logger.log_error(pilot_id=sid, context="REQUEST", error=str(e))
             self.metrics.record_error()
 
@@ -235,19 +250,19 @@ class SocketManager:
         try:
             update_data: UpdateStepData = pilot.handle_cancel_request(data)
 
-            self._emit(sid, "requestCancelled", update_data.to_ack_payload())
+            self._emit(sid, REQUEST_CANCELLED_SEND, update_data.to_ack_payload())
 
-            self._emit(ATC_ROOM, "new_request", update_data.to_atc_payload())
+            self._emit(ATC_ROOM, NEW_REQUEST_SEND, update_data.to_atc_payload())
 
             if update_data.step_code in CLEARANCE_CODES:
                 clearance = pilot.clear_clearance(update_data.step_code)
 
-                self._emit(ATC_ROOM, "proposedClearance", {
+                self._emit(ATC_ROOM, PROPOSED_CLEARANCE_SEND, {
                     "pilot_sid": pilot.sid,
                     "clearance": clearance,
                 })
 
-                self._emit(pilot.sid, "proposedClearance", {
+                self._emit(pilot.sid, PROPOSED_CLEARANCE_SEND, {
                     "kind": clearance["kind"],
                     "instruction": clearance["instruction"],
                 })
@@ -260,8 +275,8 @@ class SocketManager:
             )
 
         except Exception as e:
-            error_payload: SocketError = pilot._error("CANCEL", str(e), data.get("requestType"))
-            self._emit(sid, error_payload["event"], error_payload["payload"])
+            error_payload: SocketErrorPayload = pilot._error("CANCEL", str(e), data.get("requestType"))
+            self._emit(sid, ERROR_SEND, error_payload)
             logger.log_error(pilot_id=sid, context="CANCEL", error=str(e))
             self.metrics.record_error()
 
@@ -274,19 +289,19 @@ class SocketManager:
         try:
             update_data: UpdateStepData = pilot.process_action(data)
 
-            self._emit(sid, "actionAcknowledged", update_data.to_ack_payload())
+            self._emit(sid, ACTION_ACK_SEND, update_data.to_ack_payload())
 
-            self._emit(ATC_ROOM, "new_request", update_data.to_atc_payload())
+            self._emit(ATC_ROOM, NEW_REQUEST_SEND, update_data.to_atc_payload())
 
             if data.get("action") in [CANCEL, UNABLE] and update_data.step_code in CLEARANCE_CODES:
                 clearance = pilot.clear_clearance(update_data.step_code)
 
-                self._emit(sid, "proposedClearance", {
+                self._emit(sid, PROPOSED_CLEARANCE_SEND, {
                     "kind": clearance["kind"],
                     "instruction": clearance["instruction"],
                 })
 
-                self._emit(ATC_ROOM, "proposedClearance", {
+                self._emit(ATC_ROOM, PROPOSED_CLEARANCE_SEND, {
                     "pilot_sid": pilot.sid,
                     "clearance": clearance,
                 })
@@ -299,8 +314,8 @@ class SocketManager:
             )
 
         except Exception as e:
-            error_payload = pilot._error("ACTION", str(e), data.get("requestType"))
-            self._emit(sid, error_payload["event"], error_payload["payload"])
+            error_payload: SocketErrorPayload = pilot._error("ACTION", str(e), data.get("requestType"))
+            self._emit(sid, ERROR_SEND, error_payload)
             logger.log_error(pilot_id=sid, context="ACTION", error=str(e))
             self.metrics.record_error()
 
@@ -318,15 +333,11 @@ class SocketManager:
             logs = logger.get_logs_for_pilot(sid)
             print(logs[:20])
 
-            self._emit(sid, "activityInfoResponse", {
-                "logs": logs[:20],
-            })
+            self._emit(sid, ACTIVITY_INFO_SEND, logs)
 
         except Exception as e:
             logger.log_error(pilot_id=sid, context="ACTIVITY", error=str(e))
-            self._emit(sid, "activityInfoResponse", {
-                "logs": [],
-            })
+            self._emit(sid, ACTIVITY_INFO_SEND, [])
 
     ## ATC EVENTS
     ## === SEND RESPONSE
@@ -335,7 +346,7 @@ class SocketManager:
         start_ts = get_current_timestamp()
 
         if not self.atc_manager.exists(sid):
-            self._emit(sid, "error", {"message": "ATC not connected"})
+            self._emit(sid, ERROR_SEND, {"message": "ATC not connected"})
             logger.log_error(pilot_id=sid, context="ATC_RESPONSE", error="ATC not connected")
             self.metrics.record_error()
             return
@@ -343,7 +354,7 @@ class SocketManager:
         try:
             atc = self.atc_manager.get(sid)
         except KeyError as e:
-            self._emit(sid, "error", {"message": "ATC not connected"})
+            self._emit(sid, ERROR_SEND, {"message": "ATC not connected"})
             logger.log_error(pilot_id=sid, context="ATC_RESPONSE", error=str(e))
             self.metrics.record_error()
             return
@@ -351,12 +362,12 @@ class SocketManager:
         try:
             pilot_sid = payload.get("pilot_sid")
             if not pilot_sid:
-                self._emit(sid, "error", {"message": f"Unknown pilot: {pilot_sid}"})
+                self._emit(sid, ERROR_SEND, {"message": f"Unknown pilot: {pilot_sid}"})
                 logger.log_error(pilot_id=sid, context="ATC_RESPONSE", error="Missing pilot_sid")
                 return
 
             if not self.pilots.exists(pilot_sid):
-                self._emit(sid, "error", {"message": f"Pilot with SID {pilot_sid} does not exist"})
+                self._emit(sid, ERROR_SEND, {"message": f"Pilot with SID {pilot_sid} does not exist"})
                 logger.log_error(pilot_id=sid, context="ATC_RESPONSE", error=f"Pilot not found: {pilot_sid}")
                 self.metrics.record_error()
                 return
@@ -379,12 +390,12 @@ class SocketManager:
             if direction:
                 pilot_event_payload["direction"] = str(direction).upper()
 
-            self._emit(update.pilot_sid, "atcResponse", pilot_event_payload)
+            self._emit(update.pilot_sid, ATC_RESPONSE_TO_PILOT, pilot_event_payload)
 
             if update.status == StepStatus.NEW:
                 update.status = StepStatus.RESPONDED
 
-            self._emit(ATC_ROOM, "new_request", update.to_atc_payload())
+            self._emit(ATC_ROOM, NEW_REQUEST_SEND, update.to_atc_payload())
 
             if update.step_code in CLEARANCE_CODES:
                 clearance = None
@@ -396,7 +407,7 @@ class SocketManager:
                     clearance = pilot.clearances["expected"]
 
                 if clearance:
-                    self._emit(pilot_sid, "proposedClearance", {
+                    self._emit(pilot_sid, PROPOSED_CLEARANCE_SEND, {
                         "kind": clearance["kind"],
                         "instruction": clearance["instruction"],
                     })
@@ -404,12 +415,12 @@ class SocketManager:
             if payload.get("action") in [CANCEL, UNABLE] and update.step_code in CLEARANCE_CODES:
                 clearance = pilot.clear_clearance(update.step_code)
 
-                self._emit(pilot_sid, "proposedClearance", {
+                self._emit(pilot_sid, PROPOSED_CLEARANCE_SEND, {
                     "kind": clearance["kind"],
                     "instruction": clearance["instruction"],
                 })
 
-                self._emit(ATC_ROOM, "proposedClearance", {
+                self._emit(ATC_ROOM, PROPOSED_CLEARANCE_SEND, {
                     "pilot_sid": pilot.sid,
                     "clearance": clearance,
                 })
@@ -430,7 +441,7 @@ class SocketManager:
             )
 
         except ValueError as e:
-            self._emit(sid, "error", {"message": str(e)})
+            self._emit(sid, ERROR_SEND, {"message": str(e)})
             logger.log_error(pilot_id=sid, context="ATC_RESPONSE", error=str(e))
             self.metrics.record_error()
 
@@ -438,7 +449,7 @@ class SocketManager:
     def handle_pilot_list(self, data=None):
         sid = request.sid
         pilot_list_data = self.get_adjusted_pilot_list()
-        self._emit(sid, "pilot_list", pilot_list_data)
+        self._emit(sid, PILOT_LIST_SEND, pilot_list_data)
 
     def get_adjusted_pilot_list(self) -> list[PilotPublicView]:
         pilot_list: list[Pilot] = self.pilots.get_all_pilots()
@@ -463,40 +474,40 @@ class SocketManager:
     def handle_map_request(self):
         sid = request.sid
         if not self.airport_map_manager:
-            self._emit(sid, "error", {"message": "Airport map manager not initialized"})
+            self._emit(sid, ERROR_SEND, {"message": "Airport map manager not initialized"})
             logger.log_error(pilot_id=sid, context="MAP_REQUEST", error="Airport map manager not initialized")
             self.metrics.record_error()
             return
 
         map_data = self.airport_map_manager.get_map()
         if not map_data:
-            self._emit(sid, "error", {"message": "No airport map data available"})
+            self._emit(sid, ERROR_SEND, {"message": "No airport map data available"})
             logger.log_error(pilot_id=sid, context="MAP_REQUEST", error="No airport map data available")
             self.metrics.record_error()
             return
 
-        self._emit(sid, "airport_map_data", map_data)
+        self._emit(sid, AIRPORT_MAP_DATA_SEND, map_data)
 
     ## === SEND CLEARANCE
     def on_clearance_request(self, payload: dict):
         sid = request.sid
         atc = self.atc_manager.get(sid)
         if not atc:
-            self._emit(sid, "error", {"message": "ATC not connected"})
+            self._emit(sid, ERROR_SEND, {"message": "ATC not connected"})
             logger.log_error(pilot_id=sid, context="CLEARANCE", error="ATC not connected")
             self.metrics.record_error()
             return
 
         pilot_sid = payload.get("pilot_sid")
         if not pilot_sid:
-            self._emit(sid, "error", {"message": "Missing pilot SID"})
+            self._emit(sid, ERROR_SEND, {"message": "Missing pilot SID"})
             logger.log_error(pilot_id=sid, context="CLEARANCE", error="Missing pilot SID")
             self.metrics.record_error()
             return
 
         pilot = self.pilots.get(pilot_sid)
         if not pilot:
-            self._emit(sid, "error", {"message": f"Pilot with SID {pilot_sid} does not exist"})
+            self._emit(sid, ERROR_SEND, {"message": f"Pilot with SID {pilot_sid} does not exist"})
             logger.log_error(pilot_id=sid, context="CLEARANCE", error=f"Pilot not found: {pilot_sid}")
             self.metrics.record_error()
             return
@@ -517,13 +528,13 @@ class SocketManager:
 
             pilot.set_clearance(clearance)
 
-            self._emit(ATC_ROOM, "proposedClearance", {
+            self._emit(ATC_ROOM, PROPOSED_CLEARANCE_SEND, {
                 "pilot_sid": pilot.sid,
                 "clearance": clearance,
             })
 
         except Exception as e:
-            self._emit(sid, "error", {"message": str(e)})
+            self._emit(sid, ERROR_SEND, {"message": str(e)})
             logger.log_error(pilot_id=sid, context="CLEARANCE", error=str(e))
             self.metrics.record_error()
 
@@ -531,20 +542,20 @@ class SocketManager:
         sid = request.sid
         atc = self.atc_manager.get(sid)
         if not atc:
-            self._emit(sid, "error", {"message": "ATC not connected"})
+            self._emit(sid, ERROR_SEND, {"message": "ATC not connected"})
             logger.log_error(pilot_id=sid, context="CLEARANCE", error="ATC not connected")
             self.metrics.record_error()
             return
 
         if not pilot_sid:
-            self._emit(sid, "error", {"message": "Missing pilot SID"})
+            self._emit(sid, ERROR_SEND, {"message": "Missing pilot SID"})
             logger.log_error(pilot_id=sid, context="CLEARANCE", error="Missing pilot SID")
             self.metrics.record_error()
             return
 
         pilot = self.pilots.get(pilot_sid)
         if not pilot:
-            self._emit(sid, "error", {"message": f"Pilot with SID {pilot_sid} does not exist"})
+            self._emit(sid, ERROR_SEND, {"message": f"Pilot with SID {pilot_sid} does not exist"})
             logger.log_error(pilot_id=sid, context="CLEARANCE", error=f"Pilot not found: {pilot_sid}")
             self.metrics.record_error()
             return
@@ -552,12 +563,12 @@ class SocketManager:
         try:
             pilot.init_clearances()
 
-            self._emit(ATC_ROOM, "clearancesCancelled", {
+            self._emit(ATC_ROOM, CLEARANCE_CANCELLED, {
                 "pilot_sid": pilot.sid,
                 "clearances": pilot.clearances,
             })
 
         except Exception as e:
-            self._emit(sid, "error", {"message": str(e)})
+            self._emit(sid, ERROR_SEND, {"message": str(e)})
             logger.log_error(pilot_id=sid, context="CLEARANCE", error=str(e))
             self.metrics.record_error()
