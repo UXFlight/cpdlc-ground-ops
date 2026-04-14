@@ -118,10 +118,6 @@ class SocketErrorPayload(TypedDict):
     message: str
     timestamp: float
 
-class SocketError(TypedDict):
-    event: str
-    payload: SocketErrorPayload
-
 # ===============================
 
 # ACKNOWLEDGEMENT PAYLOAD =======
