@@ -124,7 +124,6 @@ export class LogsComponent implements OnInit, OnDestroy {
   navigateToPilot(direction: 'next' | 'prev'): void {
     const pilots = this.mainPageService.pilotsPreviewsSubject.getValue();
     if (!this.selectedPlane || pilots.length === 0) return;
-
     this.airportMapService.navigateToPilot(pilots, direction);
   }
 

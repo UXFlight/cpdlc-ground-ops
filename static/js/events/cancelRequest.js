@@ -13,8 +13,6 @@ export async function cancelRequestEvent(e) {
                       
   if (requestType === REQUEST_TYPE.PUSHBACK) {
     togglePushbackState(true)
-    console.log(state.steps[REQUEST_TYPE.PUSHBACK].status)
-    console.log(MSG_STATUS.REQUESTED)
     if (state.steps[REQUEST_TYPE.PUSHBACK].status !== MSG_STATUS.REQUESTED) return
   }
 

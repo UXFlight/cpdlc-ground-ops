@@ -53,7 +53,6 @@ export class RequestLogComponent implements OnInit, OnDestroy, AfterViewInit {
   ngOnInit(): void {
     this.configSubscription();
     this.isRespondable = this.step.status !== StepStatus.RESPONDED;
-    console.log('RequestLogComponent initialized with step:', this.isRespondable);
   }
 
   ngOnDestroy(): void {
@@ -68,9 +67,7 @@ export class RequestLogComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   ngAfterViewInit(): void {
-    if (this.expanded) {
-      this.scrollToCard();
-    }
+    if (this.expanded) this.scrollToCard();
   }
 
   configSubscription(): void {
@@ -78,11 +75,10 @@ export class RequestLogComponent implements OnInit, OnDestroy, AfterViewInit {
       this.selectedRequestInfo = requestInfo;
       const isEmpty = requestInfo.stepCode || requestInfo.requestId;
       this.expanded = !!isEmpty && this.selectedRequestInfo.stepCode === this.step.step_code
-      if (this.expanded) {
-        this.syncPushbackDirectionFromStep();
-        this.isRespondable = ![StepStatus.RESPONDED, StepStatus.CLOSED].includes(this.step.status);
-        this.quickResponses = getQReponseByStepCode(this.selectedRequestInfo.stepCode as StepCode);
-      }
+      if (!this.expanded) return
+      this.syncPushbackDirectionFromStep();
+      this.isRespondable = ![StepStatus.RESPONDED, StepStatus.CLOSED].includes(this.step.status);
+      this.quickResponses = getQReponseByStepCode(this.selectedRequestInfo.stepCode as StepCode);
     })
 
     this.smartResponsesSubscription = this.mainPageService.smartResponses$.subscribe((responses: string[]) => {
