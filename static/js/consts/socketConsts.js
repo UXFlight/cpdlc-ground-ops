@@ -14,7 +14,7 @@ export const SOCKET_LISTENS = {
     CLEARANCE_UPDATE: "proposedClearance",
     TICK: "tick",
     TIMEOUT: "atcTimeout",
-    ATC_RESPONSE: "atcResponse",
+    ATC_RESPONSE: "atcResponseToPilot",
     ACTION_ACK: "actionAcknowledged",
     REQUEST_ACK: "requestAcknowledged",
     CANCEL_ACK: "requestCancelled",
