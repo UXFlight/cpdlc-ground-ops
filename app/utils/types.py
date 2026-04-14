@@ -25,6 +25,7 @@ ACTIVE_TAXI_STEP_STATUSES = {
     StepStatus.NEW,
     StepStatus.LOADED,
     StepStatus.EXECUTED,
+    StepStatus.CLOSED
 }
 
 # POSSIBLE REQUESTS CODES

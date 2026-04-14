@@ -48,6 +48,7 @@ class SocketManager:
         self.socket.listen("selectPilot", self.handle_atc_select_pilot)
         self.socket.listen("getAirportMapData", self.handle_map_request)
         self.socket.listen("getClearance", self.on_clearance_request)
+        self.socket.listen("cancelClearance", self.on_clearance_cancel)
 
         # GSS EVENTS
         # gss_client.listen("gss_connected", self.on_gss_connect)
@@ -581,6 +582,44 @@ class SocketManager:
                 "payload": {
                     "pilot_sid": pilot.sid,
                     "clearance": clearance
+                }
+            })
+
+        except Exception as e:
+            self.socket.send("error", {"message": str(e)}, room=sid)
+            logger.log_error(pilot_id=sid, context="CLEARANCE", error=str(e))
+            self.metrics.record_error()
+
+    def on_clearance_cancel(self, pilot_sid: str):
+        sid = request.sid
+        atc = self.atc_manager.get(sid)
+        if not atc:
+            self.socket.send("error", {"message": "ATC not connected"}, room=sid)
+            logger.log_error(pilot_id=sid, context="CLEARANCE", error="ATC not connected")
+            self.metrics.record_error()
+            return
+
+        if not pilot_sid:
+            self.socket.send("error", {"message": "Missing pilot SID"}, room=sid)
+            logger.log_error(pilot_id=sid, context="CLEARANCE", error="Missing pilot SID")
+            self.metrics.record_error()
+            return
+
+        pilot = self.pilots.get(pilot_sid)
+        if not pilot:
+            self.socket.send("error", {"message": f"Pilot with SID {pilot_sid} does not exist"}, room=sid)
+            logger.log_error(pilot_id=sid, context="CLEARANCE", error=f"Pilot not found: {pilot_sid}")
+            self.metrics.record_error()
+            return
+
+        try:
+            pilot.init_clearances()
+
+            self._emit_event("atc_room", {
+                "event": "clearancesCancelled",
+                "payload": {
+                    "pilot_sid": pilot.sid,
+                    "clearances": pilot.clearances
                 }
             })
 

@@ -56,7 +56,7 @@ class Atc:
         
     def validate_clearance_request(self, pilot: Pilot, kind: str):
         if not pilot.plane["spawn_pos"]:
-            raise ValueError(f"Pilot {pilot.sid} has no position")
+            raise ValueError(f"Pilot {pilot.sid} has no initial position")
 
         if kind not in ["expected", "taxi"]:
             raise ValueError(f"Invalid clearance kind: {kind}")

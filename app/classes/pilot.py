@@ -35,7 +35,7 @@ class Pilot:
         
         self.plane: Plane = plane
         
-        self.clearances = self.init_clearances()
+        self.init_clearances()
         self.current_clearance : ClearanceType = "expected"
         self.initialize_steps()
 
@@ -47,13 +47,12 @@ class Pilot:
             self.steps[code] = Step(step_code=code, label=label, request_id=request_id)
             
     def init_clearances(self) -> Dict[ClearanceType, Clearance]:
-        return {
+        self.clearances = {
             "expected": {
                 "kind": "expected",
                 "instruction": "",
                 "coords": [],
                 "issued_at": "",
-                
             },
             "taxi": {
                 "kind": "taxi",
@@ -65,10 +64,10 @@ class Pilot:
                 "kind": "route_change",
                 "instruction": "",
                 "coords": [],
-                "issued_at": "" ,
+                "issued_at": "",
             }
-            
         }
+        return self.clearances
         
     def set_clearance(self, clearance: Clearance):
         if clearance["kind"] not in self.clearances:
