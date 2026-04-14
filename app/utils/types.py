@@ -16,7 +16,6 @@ class StepStatus(Enum):
     UNABLE = "unable"
     CANCEL = "cancel"
     TIMEOUT = "timeout"
-    ERROR = "error"
 
 ACTIVE_TAXI_STEP_STATUSES = {
     StepStatus.STANDBY,
