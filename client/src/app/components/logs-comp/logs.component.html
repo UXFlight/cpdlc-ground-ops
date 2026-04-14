@@ -6,7 +6,11 @@
         <div class="selected-pilot-info">
             <div>
                 <div class="pilot-header">
-                    <div class="pilot-id" [ngStyle]="{'color': selectedPilot.color}">
+                    <div 
+                        class="pilot-id" 
+                        [ngStyle]="{'color': selectedPilot.color}"
+                        [title]="'id: ' + selectedPilot.sid"
+                    >
                         {{ selectedPilot.sid.substring(0, 4).toUpperCase() }}
                     </div>
             
@@ -37,24 +41,6 @@
                             </button>
                         </div>
                     }
-                                
-                    <!-- Logs Button -->
-                <button 
-                    class="logs-btn" 
-                    [title]="'View detailed logs for ' + selectedPilot.sid.substring(0,4).toUpperCase()"
-                >
-                    <span>Pilot control panel</span>
-                    <svg class="logs-icon" viewBox="0 0 24 24" aria-hidden="true">
-                        <g>
-                            <g data-name="Layer 2">
-                                <rect width="9.5" height="9.5" x="13.25" y="1.25" rx="1.75" fill="currentColor"></rect>
-                                <path d="m22.733 16.763-3.496-3.496a1.753 1.753 0 0 0-2.474 0l-3.496 3.496a1.752 1.752 0 0 0 0 2.474l3.496 3.496a1.752 1.752 0 0 0 2.474 0l3.496-3.496a1.751 1.751 0 0 0 0-2.474z" fill="currentColor"></path>
-                                <rect width="9.5" height="9.5" x="1.25" y="1.25" rx="1.75" fill="currentColor"></rect>
-                                <rect width="9.5" height="9.5" x="1.25" y="13.25" rx="1.75" fill="currentColor"></rect>
-                            </g>
-                        </g>
-                    </svg>
-                </button>
                 </div>
             
                 @if (selectedPilot.plane) {

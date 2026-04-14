@@ -52,8 +52,7 @@
         margin-bottom: 0.75rem;
 
         .pilot-id, 
-        .pilot-nav,
-        .logs-btn {
+        .pilot-nav {
             flex: 1;
         }
 
@@ -105,34 +104,6 @@
                 color: var(--text-primary);
             }
 
-        }
-
-        .logs-btn {
-            display: flex;
-            align-items: center;
-            gap: 0.4rem;
-            background-color: var(--bg-secondary);
-            color: var(--text-primary);
-            border: 1px solid var(--text-muted);
-            padding: 0.4rem 0.8rem;
-            border-radius: 6px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            transition: all 0.2s ease;
-            cursor: pointer;
-            justify-content: space-between;
-
-            &:hover {
-                background-color: var(--bg-body);
-                border-color: var(--text-secondary);
-            }
-
-            .logs-icon {
-                width: 12px;
-                height: 12px;
-                fill: var(--text-secondary);
-            }
         }
     }
 
