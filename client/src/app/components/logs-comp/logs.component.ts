@@ -167,7 +167,6 @@ export class LogsComponent implements OnInit, OnDestroy {
       if (len === 0) return;
       requestInfo.stepCode = planeSteps[this.currIdx].step_code;
       requestInfo.requestId = planeSteps[this.currIdx].request_id;
-      console.log(requestInfo);
         this.currIdx = (this.currIdx - 1 + len) % len;;
 
         return this.mainPageService.selectRequest(requestInfo);
