@@ -128,10 +128,7 @@ export class RequestLogComponent implements OnInit, OnDestroy, AfterViewInit {
 
   submitResponse(event: Event): void {
     event.stopPropagation();
-    if (this.step?.step_code === 'DM_131' && !this.selectedDirection) {
-      alert('Please select a direction for pushback (LEFT or RIGHT).');
-      return;
-    }
+    if (this.step?.step_code === 'DM_131' && !this.selectedDirection) return
   
     const formattedResponse = this.response.trim();
     if (!formattedResponse) return;

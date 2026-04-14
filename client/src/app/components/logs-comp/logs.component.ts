@@ -155,7 +155,8 @@ export class LogsComponent implements OnInit, OnDestroy {
     if (event.key === 'ArrowRight') return this.airportMapService.navigateToPilot(this.pilots, 'next');
 
     if (!this.selectedPlane) return;
-    const planeSteps = Object.values(this.selectedPlane.steps);
+    const planeSteps = Object.values(this.selectedPlane.steps)
+      .filter(step => !['DM_135', 'DM_136'].includes(step.step_code));
     const len = planeSteps.length;
     let requestInfo: SelectedRequestInfo = {
         stepCode: '',
@@ -163,9 +164,10 @@ export class LogsComponent implements OnInit, OnDestroy {
     };
 
     if (event.key === 'ArrowUp') {
-        if (len === 0) return;
-        requestInfo.stepCode = planeSteps[this.currIdx].step_code;
-        requestInfo.requestId = planeSteps[this.currIdx].request_id;
+      if (len === 0) return;
+      requestInfo.stepCode = planeSteps[this.currIdx].step_code;
+      requestInfo.requestId = planeSteps[this.currIdx].request_id;
+      console.log(requestInfo);
         this.currIdx = (this.currIdx - 1 + len) % len;;
 
         return this.mainPageService.selectRequest(requestInfo);
