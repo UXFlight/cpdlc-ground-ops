@@ -19,10 +19,9 @@ export class ClearanceBlockComponent implements OnInit, OnDestroy {
 
   showDetails = false;
 
-  selectedPlane: PilotPublicView | null = null;
-  selectedPlaneSubcription: Subscription;
+  selectedPilot: PilotPublicView | null = null;
+  selectedPilotSubcription: Subscription;
 
-  selectedPilotSid: string = '';
   response: string = '';
 
   showCancelRequest = false;
@@ -39,13 +38,12 @@ export class ClearanceBlockComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.selectedPlaneSubcription?.unsubscribe();
+    this.selectedPilotSubcription?.unsubscribe();
   }
 
   configSubscription(): void {
-    this.selectedPlaneSubcription = this.airportMapService.selectedPlane$.subscribe((plane) => {
-      this.selectedPlane = plane;
-      this.selectedPilotSid = plane?.sid || '';
+    this.selectedPilotSubcription = this.airportMapService.selectedPilot$.subscribe((pilot) => {
+      this.selectedPilot = pilot;
       this.response = '';
     });
   }
@@ -67,7 +65,7 @@ export class ClearanceBlockComponent implements OnInit, OnDestroy {
   }
 
   get step() {
-    return this.selectedPlane?.steps?.[this.stepCode] ?? null;
+    return this.selectedPilot?.steps?.[this.stepCode] ?? null;
   }
 
   get isRespondableStep(): boolean {
@@ -91,21 +89,24 @@ export class ClearanceBlockComponent implements OnInit, OnDestroy {
   }
 
   requestClearance(): void {
-    if (!this.selectedPilotSid || !this.requestedClearanceKind) return;
-    this.mainPageService.fetchClearance(this.selectedPilotSid, this.requestedClearanceKind);
+    const pilotSid = this.selectedPilot?.sid;
+    if (!pilotSid || !this.requestedClearanceKind) return;
+    this.mainPageService.fetchClearance(pilotSid, this.requestedClearanceKind);
     this.showCancelRequest = true;
     this.showDetails = true;
   }
 
   cancelClearance(): void {
-      if (!this.selectedPilotSid || !this.requestedClearanceKind) return;
-      this.mainPageService.cancelClearance(this.selectedPilotSid)
+      const pilotSid = this.selectedPilot?.sid;
+      if (!pilotSid || !this.requestedClearanceKind) return;
+      this.mainPageService.cancelClearance(pilotSid)
       this.showCancelRequest = false;
   }
 
   // requests to server
   emitAction(action: 'standby' | 'unable' | 'affirm'): void {
-    if (!this.clearance || !this.selectedPilotSid || !this.isRespondableStep || !this.step) return;
+    const pilotSid = this.selectedPilot?.sid;
+    if (!this.clearance || !pilotSid || !this.isRespondableStep || !this.step) return;
 
     const message =
       action === 'affirm'
@@ -115,7 +116,7 @@ export class ClearanceBlockComponent implements OnInit, OnDestroy {
           : this.unableMessage;
 
     const payload = {
-      pilot_sid: this.selectedPilotSid,
+      pilot_sid: pilotSid,
       step_code: this.stepCode,
       action,
       message,

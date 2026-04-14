@@ -56,7 +56,6 @@ export interface PilotPublicView {
     clearances: Record<string, Clearance>;   
 
     // frontend specific
-    notificationCount: number;
     renderClearance?: boolean;
 }
 

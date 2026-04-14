@@ -39,7 +39,7 @@
                 @if (showCancelRequest) {
                     <button 
                         class="btn cancel-btn"
-                        [disabled]="!selectedPilotSid"
+                        [disabled]="!selectedPilot"
                         (click)="cancelClearance()"
                     >
                         Cancel
@@ -72,7 +72,7 @@
     
             <button 
                 class="btn request-btn"
-                [disabled]="!requestedClearanceKind || !selectedPilotSid"
+                [disabled]="!requestedClearanceKind || !selectedPilot"
                 (click)="requestClearance()"
             >
                 Generate Clearance 

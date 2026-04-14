@@ -19,9 +19,6 @@ export class MainPageService {
   pilotsPreviewsSubject = new BehaviorSubject<PilotPublicView[]>([]);
   pilotsPreviews$: Observable<PilotPublicView[]> = this.pilotsPreviewsSubject.asObservable()
   
-  selectedPilotSubject = new BehaviorSubject<PilotPublicView | null>(null);
-  selectedPilot$: Observable<PilotPublicView | null> = this.selectedPilotSubject.asObservable();
-
   private selectedRequestIdSubject = new BehaviorSubject<SelectedRequestInfo>({stepCode: "", requestId: ""});
   selectedRequestId$ = this.selectedRequestIdSubject.asObservable()
   
@@ -45,7 +42,6 @@ export class MainPageService {
     private readonly airportMapService: AirportMapService
   ) {
     this.listenToSocketEvents();
-    this.airportMapService // to sub to the plane... maybe later
   }
 
   private listenToSocketEvents(): void {
@@ -63,7 +59,6 @@ export class MainPageService {
 
     // atc events 
     this.clientSocketService.listen<Atc[]>('atc_list', this.onAtcListUpdate);
-    this.clientSocketService.listen<Atc>("selected_pilot", this.onAtcPilotSelect);
 
     
     // global error handling
@@ -107,9 +102,7 @@ export class MainPageService {
   
     this.pilotsPreviewsSubject.next([...currentPreviews]);
   
-    const selectedPilot = this.selectedPilotSubject.getValue();
-    if (pilot.sid !== selectedPilot?.sid) pilot.notificationCount += 1;
-    else this.selectedPilotSubject.next(pilot);
+    this.airportMapService.pilot = pilot;
   
     const lastIndx = pilot.history.length - 1;
     const currentStep = pilot.history[lastIndx];
@@ -151,22 +144,15 @@ export class MainPageService {
     this.selectedRequestIdSubject.next(requestInfo);
   }
 
-  selectPilot(pilotSid: string, sendRequest: boolean = true): void {
-    if(sendRequest) this.clientSocketService.send('selectPilot', pilotSid);
-    if (this.selectedPilotSubject.getValue()?.sid === pilotSid) {
-      this.selectedPilotSubject.next(null);
+  selectPilot(pilotSid: string): void {
+    if (this.airportMapService.pilot?.sid === pilotSid) {
+      this.airportMapService.pilot = null;
       return;
     }
     const currentPreviews = this.pilotsPreviewsSubject.getValue();
     const selectedPilot = currentPreviews.find(pilot => pilot.sid === pilotSid) || null;
-    if (selectedPilot) selectedPilot.notificationCount = 0;
     if (!this.isPilotRequest(selectedPilot)) this.selectedRequestIdSubject.next({stepCode: "", requestId: ""});
-    this.selectedPilotSubject.next(selectedPilot);
-  }
-
-  isSelectedPilot(pilotSid: string): boolean {
-    const currPilot = this.selectedPilotSubject.getValue();
-    return currPilot?.sid === pilotSid;
+    this.airportMapService.pilot = selectedPilot;
   }
 
   isPilotRequest(pilot : PilotPublicView | null) : boolean {
@@ -174,6 +160,7 @@ export class MainPageService {
     const selectedRequest = this.selectedRequestIdSubject.getValue();
     return pilot.history.some(step => step.request_id === selectedRequest.requestId && step.step_code === selectedRequest.stepCode);
   }
+
 
   getSid(): string | null {
     return this.clientSocketService.getSocketId();
@@ -187,19 +174,18 @@ export class MainPageService {
   private onDisconnect = () => {
     this.isConnectedSubject.next(false);
     this.pilotsPreviewsSubject.next([]);
-    this.selectedPilotSubject.next(null);
+    this.airportMapService.pilot = null;
     this.selectedRequestIdSubject.next({stepCode: "", requestId: ""});
   }
 
   private onNewPilotPublicView = (preview: PilotPublicView) => {
-    preview.notificationCount = 0;
     preview.renderClearance = false
 
     const currentPreviews = this.pilotsPreviewsSubject.getValue();
     this.pilotsPreviewsSubject.next([...currentPreviews, preview]);
   
-    if (this.selectedPilotSubject.getValue()?.sid === preview.sid) {
-      this.selectedPilotSubject.next(preview);
+    if (this.airportMapService.pilot?.sid === preview.sid) {
+      this.airportMapService.pilot = preview;
     }
   };
     
@@ -207,7 +193,7 @@ export class MainPageService {
     const currentPreviews = this.pilotsPreviewsSubject.getValue();
     const updatedPreviews = currentPreviews.filter(pilot => pilot.sid !== pilotSid);
     this.pilotsPreviewsSubject.next(updatedPreviews);
-    if (this.selectedPilotSubject.getValue()?.sid === pilotSid) this.selectPilot(pilotSid);
+    if (this.airportMapService.pilot?.sid === pilotSid) this.selectPilot(pilotSid);
   }
 
   private onNewRequest = (payload: AckUpdatePayload) => {
@@ -215,10 +201,7 @@ export class MainPageService {
   }
 
   private pilotListUpdate = (pilots: PilotPublicView[]) => {
-    pilots.forEach(pilot => {
-      pilot.notificationCount = 0;
-      pilot.renderClearance = false;
-    });
+    pilots.forEach(pilot => { pilot.renderClearance = false; });
     this.pilotsPreviewsSubject.next(pilots);
   }
 
@@ -232,11 +215,10 @@ export class MainPageService {
     const kind = payload.clearance.kind;
     pilot.clearances[kind] = payload.clearance;
     this.pilotsPreviewsSubject.next([...currentPreviews]);
-    if (this.selectedPilotSubject.getValue()?.sid === payload.pilot_sid) this.selectedPilotSubject.next(pilot);
+    if (this.airportMapService.pilot?.sid === payload.pilot_sid) this.airportMapService.pilot = pilot;
   }
 
   private handleCancelClearance = (payload: ClearancesCancelledPayload) => {
-    console.log(payload)
     const currentPreviews = this.pilotsPreviewsSubject.getValue();
     const pilotIndex = currentPreviews.findIndex(p => p.sid === payload.pilot_sid);
     if (pilotIndex === -1) return;
@@ -244,7 +226,7 @@ export class MainPageService {
     if (!pilot) return;
     pilot.clearances = payload.clearances;
     this.pilotsPreviewsSubject.next([...currentPreviews]);
-    if (this.selectedPilotSubject.getValue()?.sid === payload.pilot_sid) this.selectedPilotSubject.next(pilot);
+    if (this.airportMapService.pilot?.sid === payload.pilot_sid) this.airportMapService.pilot = pilot;
   }
 
   private onAtcListUpdate = (atcList: Atc[]) => {
@@ -252,19 +234,6 @@ export class MainPageService {
       atc.sid = atc.sid.substring(0, 6).toUpperCase();
     });
     this.atcSubject.next(atcList);
-  }
-
-  private onAtcPilotSelect = (atc: Atc) => {
-    const frontSid = atc.sid.substring(0, 6).toUpperCase();
-    const currentAtcList = this.atcSubject.getValue();
-    const atcIdx = currentAtcList.findIndex(a => a.sid === frontSid);
-    if (atcIdx === -1) return;
-    const updatedAtcList = [...currentAtcList];
-    updatedAtcList[atcIdx] = {
-      ...currentAtcList[atcIdx],
-      selectedPilot: atc.selectedPilot
-    };
-    this.atcSubject.next(updatedAtcList);
   }
 
   private onError = (payload : ErrorMessage) => {

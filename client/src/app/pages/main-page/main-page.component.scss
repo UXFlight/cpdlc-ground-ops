@@ -13,7 +13,6 @@
   position: relative;
 }
 
-.pilot-list,
 .airport-map,
 .header,
 .logs {
@@ -21,13 +20,6 @@
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   border: 1px solid var(--text-muted);
-}
-
-.pilot-list {
-  display: grid;
-  grid-column: 1;
-  grid-row: 2 / -1;
-  overflow-y: auto;
 }
 
 .logs {

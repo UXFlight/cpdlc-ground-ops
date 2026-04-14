@@ -4,7 +4,6 @@ import { MainPageService } from '@app/services/main-page.service';
 import { animate, style, transition, trigger } from '@angular/animations';
 import { LABELS } from '@app/modules/constants';
 import { Subscription } from 'rxjs';
-import { SelectedPilotComponent } from '../selected-pilot/selected-pilot.component';
 import { AirportMapComponent } from '../airport-map/airport-map.component';
 import { AirportMapService } from '@app/services/airport-map.service';
 import { Clearance, PilotPublicView, StepPublicView } from '@app/interfaces/Publics';
@@ -28,7 +27,7 @@ enum CardinalDirection {
 @Component({
   selector: 'app-logs',
   standalone: true,
-  imports: [FormsModule, AirportMapComponent, SelectedPilotComponent, RequestLogComponent, NgStyle, ClearancesStickerComponent, ClearanceBlockComponent],
+  imports: [FormsModule, AirportMapComponent, RequestLogComponent, NgStyle, ClearancesStickerComponent, ClearanceBlockComponent],
   templateUrl: './logs.component.html',
   styleUrl: './logs.component.scss',
   animations: [
@@ -52,10 +51,8 @@ enum CardinalDirection {
 
 export class LogsComponent implements OnInit, OnDestroy {
   private selectedPilotSubscription: Subscription;
-  private selectedPlaneSubscription: Subscription;
 
-  selectedPilotSid: string | null = null;
-  selectedPlane: PilotPublicView | null = null;
+  selectedPilot: PilotPublicView | null = null;
 
   defaultLabels = LABELS;
 
@@ -86,36 +83,23 @@ export class LogsComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.selectedPilotSubscription?.unsubscribe();
-    this.selectedPlaneSubscription?.unsubscribe();
   }
 
   configSubscription(): void {
-    this.selectedPilotSubscription = this.mainPageService.selectedPilot$.subscribe((pilot) => {
-      this.selectedPilotSid = pilot ? pilot.sid : null;
-      this.controlsPanelActive = !!!this.selectedPilotSid
+    this.pilotsSubscription = this.mainPageService.pilotsPreviews$.subscribe((pilots) => {
+        this.pilots = pilots;
     });
-
-    this.selectedPlaneSubscription = this.airportMapService.selectedPlane$.subscribe((plane) => {
+    this.selectedPilotSubscription = this.airportMapService.selectedPilot$.subscribe((plane) => {
         if (!plane) this.airportMapService.resetZoomAndPan();
-        this.selectedPlane = plane;
+        this.selectedPilot = plane;
         this.currIdx = 0;
     });
 
     this.selectedRequestSubscription = this.mainPageService.selectedRequestId$.subscribe((requestInfo: SelectedRequestInfo) => {
       this.selectedRequestInfo = requestInfo;
     });
-
-    this.pilotsSubscription = this.mainPageService.pilotsPreviews$.subscribe((pilots) => {
-        this.pilots = pilots;
-    });
   }
 
-  viewPilotLogs(): void {
-    if (this.selectedPlane) {
-      this.mainPageService.selectPilot(this.selectedPlane.sid, false);
-      this.selectedPlane = null; 
-    }
-  }
 
   getActiveSteps(pilot: PilotPublicView): StepPublicView[] {
     return this.mainPageService.getActiveStep(pilot.sid).filter(step => !['DM_135', 'DM_136'].includes(step.step_code));
@@ -123,7 +107,7 @@ export class LogsComponent implements OnInit, OnDestroy {
 
   navigateToPilot(direction: 'next' | 'prev'): void {
     const pilots = this.mainPageService.pilotsPreviewsSubject.getValue();
-    if (!this.selectedPlane || pilots.length === 0) return;
+    if (!this.selectedPilot || pilots.length === 0) return;
     this.airportMapService.navigateToPilot(pilots, direction);
   }
 
@@ -154,9 +138,8 @@ export class LogsComponent implements OnInit, OnDestroy {
     if (event.key === 'ArrowLeft') return this.airportMapService.navigateToPilot(this.pilots, 'prev');
     if (event.key === 'ArrowRight') return this.airportMapService.navigateToPilot(this.pilots, 'next');
 
-    if (!this.selectedPlane) return;
-    const planeSteps = Object.values(this.selectedPlane.steps)
-      .filter(step => !['DM_135', 'DM_136'].includes(step.step_code));
+    if (!this.selectedPilot) return;
+    const planeSteps = Object.values(this.selectedPilot.steps).filter(step => !['DM_135', 'DM_136'].includes(step.step_code));
     const len = planeSteps.length;
     let requestInfo: SelectedRequestInfo = {
         stepCode: '',
@@ -201,12 +184,12 @@ export class LogsComponent implements OnInit, OnDestroy {
 
   // clearances
   getMRecentClearance(): Clearance | null {
-    if (!this.selectedPlane || !this.selectedPlane.clearances) return null;
+    if (!this.selectedPilot || !this.selectedPilot.clearances) return null;
   
     const priority = ["route_change", "taxi", "expected"];
   
     for (const kind of priority) {
-      const c = this.selectedPlane.clearances[kind];
+      const c = this.selectedPilot.clearances[kind];
       if (c && c.instruction.trim() !== "") return c;
     }
   

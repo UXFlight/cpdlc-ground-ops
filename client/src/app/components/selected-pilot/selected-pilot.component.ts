@@ -34,7 +34,7 @@ export class SelectedPilotComponent implements OnInit, OnDestroy {
     this.selectedPilotSubscription?.unsubscribe();
   }
   configSubscription(): void {
-    this.selectedPilotSubscription = this.mainPageService.selectedPilot$
+    this.selectedPilotSubscription = this.airportMapService.selectedPilot$
       .subscribe((pilot: PilotPublicView | null) => {
         this.selectedPilot = pilot;
         this.setStepArrays();
@@ -72,7 +72,7 @@ export class SelectedPilotComponent implements OnInit, OnDestroy {
 
   selectPilot(sid: string): void {
     this.mainPageService.selectPilot(sid);
-    this.airportMapService.selectPlane(null);
+    this.airportMapService.pilot = null;
   }
 
   getPilotColor(sid: string): string {

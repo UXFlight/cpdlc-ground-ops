@@ -1,19 +1,13 @@
 <div class="logs-wrapper">
     <!-- GLOBAL VIEW -->
-    @if (!selectedPilotSid) {
-        <app-airport-map />
-    }
-    <!-- SELECTED PILOT VIEW -->
-    @else {
-        <app-selected-pilot class="selected-p"/>
-    }
+    <app-airport-map />
     
-    @if (selectedPlane) {
+    @if (selectedPilot) {
         <div class="selected-pilot-info">
             <div>
                 <div class="pilot-header">
-                    <div class="pilot-id" [ngStyle]="{'color': selectedPlane.color}">
-                        {{ selectedPlane.sid.substring(0, 4).toUpperCase() }}
+                    <div class="pilot-id" [ngStyle]="{'color': selectedPilot.color}">
+                        {{ selectedPilot.sid.substring(0, 4).toUpperCase() }}
                     </div>
             
                     @if (hasMultiplePilot()) {
@@ -47,8 +41,7 @@
                     <!-- Logs Button -->
                 <button 
                     class="logs-btn" 
-                    (click)="viewPilotLogs()"
-                    [title]="'View detailed logs for ' + selectedPlane.sid.substring(0,4).toUpperCase()"
+                    [title]="'View detailed logs for ' + selectedPilot.sid.substring(0,4).toUpperCase()"
                 >
                     <span>Pilot control panel</span>
                     <svg class="logs-icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -64,18 +57,18 @@
                 </button>
                 </div>
             
-                @if (selectedPlane.plane) {
+                @if (selectedPilot.plane) {
                     <div class="position-info">
-                        <span><strong>Pos:</strong> {{ selectedPlane.plane.current_pos.name }}</span>
-                        <span><strong>Dest:</strong> {{ selectedPlane.plane.final_pos.name }}</span>
-                        <span><strong>Heading:</strong> {{ formatHeading(selectedPlane.plane.current_heading) }}</span>
+                        <span><strong>Pos:</strong> {{ selectedPilot.plane.current_pos.name }}</span>
+                        <span><strong>Dest:</strong> {{ selectedPilot.plane.final_pos.name }}</span>
+                        <span><strong>Heading:</strong> {{ formatHeading(selectedPilot.plane.current_heading) }}</span>
                     </div>
                 }
             </div>
             
             <div class="active-steps">
                 <app-clearance-block [clearance]="getMRecentClearance()"></app-clearance-block>
-                @for (step of getActiveSteps(selectedPlane); track step.request_id) {
+                @for (step of getActiveSteps(selectedPilot); track step.request_id) {
                     <app-request-log [step]="step"></app-request-log>
                 }
             </div>

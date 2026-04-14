@@ -22,8 +22,6 @@ export class RequestLogComponent implements OnInit, OnDestroy, AfterViewInit {
   @ViewChild('content') contentRef?: ElementRef<HTMLDivElement>;
 
   
-  private selectedPlaneSubscription: Subscription;
-  
   private selectedPilotSubscription: Subscription;
   
   // payload attributes
@@ -59,7 +57,6 @@ export class RequestLogComponent implements OnInit, OnDestroy, AfterViewInit {
     this.requestIdSubscription?.unsubscribe();
     this.smartResponsesSubscription?.unsubscribe();
     this.selectedPilotSubscription?.unsubscribe();
-    this.selectedPlaneSubscription?.unsubscribe();
     if (this.expanded) this.selectRequest('', '');
     this.selectedDirection = null;
     this.response = '';
@@ -85,12 +82,8 @@ export class RequestLogComponent implements OnInit, OnDestroy, AfterViewInit {
       this.smartResponses = responses;
     });
 
-    this.selectedPilotSubscription = this.mainPageService.selectedPilot$.subscribe((pilot: PilotPublicView | null) => {
+    this.selectedPilotSubscription = this.airportMapService.selectedPilot$.subscribe((pilot: PilotPublicView | null) => {
       this.setSelectedPilotSid(pilot?.sid)
-    });
-
-    this.selectedPlaneSubscription = this.airportMapService.selectedPlane$.subscribe((plane: PilotPublicView | null) => {
-      this.setSelectedPilotSid(plane?.sid)
     });
   }
 
