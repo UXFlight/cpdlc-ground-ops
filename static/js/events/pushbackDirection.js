@@ -22,8 +22,7 @@ export const enablePushbackRequest = () => {
   const right = document.querySelector(SELECTORS.PUSHBACK_RIGHT);
   const left = document.querySelector(SELECTORS.PUSHBACK_LEFT);
   
-  if (right.classList.contains(CLASS_NAMES.ACTIVE) || left.classList.contains(CLASS_NAMES.ACTIVE)) {
-    const pushbackBtn = document.querySelector(SELECTORS.PUSHBACK_BUTTON);
-    if (pushbackBtn) pushbackBtn.disabled = false;
-  }
+  if (!right.classList.contains(CLASS_NAMES.ACTIVE) && !left.classList.contains(CLASS_NAMES.ACTIVE)) return;
+  const pushbackBtn = document.querySelector(SELECTORS.PUSHBACK_BUTTON);
+  if (pushbackBtn) pushbackBtn.disabled = false;
 }
