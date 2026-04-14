@@ -45,7 +45,6 @@ export class AirportMapComponent implements OnInit, AfterViewInit, OnDestroy {
   private renderAnimationId = 0;
 
   private readonly DRAG_THRESHOLD_PX = 4;
-  private readonly KEY_PAN_STEP = 40;
   private readonly KEY_ZOOM_STEP = 1.12;
   private readonly ROTATION_STEP = Math.PI / 18;
 
@@ -299,26 +298,27 @@ export class AirportMapComponent implements OnInit, AfterViewInit, OnDestroy {
     const center: [number, number] = [canvas.clientWidth / 2, canvas.clientHeight / 2];
 
     switch (key) {
-      case 'arrowup':
-        this.airportMapService.applyPan(0, -this.KEY_PAN_STEP);
-        this.scheduleRender();
-        event.preventDefault();
-        break;
-      case 'arrowdown':
-        this.airportMapService.applyPan(0, this.KEY_PAN_STEP);
-        this.scheduleRender();
-        event.preventDefault();
-        break;
-      case 'arrowleft':
-        this.airportMapService.applyPan(-this.KEY_PAN_STEP, 0);
-        this.scheduleRender();
-        event.preventDefault();
-        break;
-      case 'arrowright':
-        this.airportMapService.applyPan(this.KEY_PAN_STEP, 0);
-        this.scheduleRender();
-        event.preventDefault();
-        break;
+      // private readonly KEY_PAN_STEP = 40;
+      // case 'arrowup':
+      //   this.airportMapService.applyPan(0, -this.KEY_PAN_STEP);
+      //   this.scheduleRender();
+      //   event.preventDefault();
+      //   break;
+      // case 'arrowdown':
+      //   this.airportMapService.applyPan(0, this.KEY_PAN_STEP);
+      //   this.scheduleRender();
+      //   event.preventDefault();
+      //   break;
+      // case 'arrowleft':
+      //   this.airportMapService.applyPan(-this.KEY_PAN_STEP, 0);
+      //   this.scheduleRender();
+      //   event.preventDefault();
+      //   break;
+      // case 'arrowright':
+      //   this.airportMapService.applyPan(this.KEY_PAN_STEP, 0);
+      //   this.scheduleRender();
+      //   event.preventDefault();
+      //   break;
       case '+':
       case '=':
         this.airportMapService.zoomByFactor(this.KEY_ZOOM_STEP, center);
