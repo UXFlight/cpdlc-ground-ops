@@ -97,8 +97,8 @@
                             </div>
                         </div>
 
-                        <div class="overlay-actions{% if item.type == 'pushback' %} pushback-overlay{% endif %}">
-                        {% if item.type == 'pushback' %}
+                        <div class="overlay-actions{% if item.label == 'Pushback' %} pushback-overlay{% endif %}">
+                        {% if item.label == 'Pushback' %}
                             <div class="pushback-direction">
                                 <button class="direction-button" id="pushback-left">left</button>
                                 <button class="direction-button" id="pushback-right">right</button>
