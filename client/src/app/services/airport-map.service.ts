@@ -203,7 +203,7 @@ export class AirportMapService {
   }
 
   navigateToPilot(pilots: PilotPublicView[], direction: string): void {
-    const sid = this.selectedPilotSubject.value?.sid;
+    const sid = this.pilot?.sid;
     if (pilots.length === 0) return;
 
     let index = 0;
@@ -221,7 +221,7 @@ export class AirportMapService {
 
   focusOnPilot(pilot: PilotPublicView, zoomLevel = 2): void {
     this.socketClientService.send('selectPilot', pilot.sid);
-    const selectedPilot = this.selectedPilotSubject.value;
+    const selectedPilot = this.pilot;
     if (selectedPilot && selectedPilot.sid === pilot.sid) return this.resetZoom();
     this.pilot = pilot;
   
@@ -252,9 +252,7 @@ export class AirportMapService {
   
       this.setZoomAndPan(zoom, { x: panX, y: panY });
   
-      if (t < 1) {
-        requestAnimationFrame(animate);
-      }
+      if (t < 1) requestAnimationFrame(animate);
     };
   
     requestAnimationFrame(animate);
@@ -274,10 +272,10 @@ export class AirportMapService {
   }
 
   resetPilotSelection(): void {
-    const selectedPilotSid = this.selectedPilotSubject.value?.sid;
+    const selectedPilotSid = this.pilot?.sid;
     if (!selectedPilotSid) return;
     this.socketClientService.send('selectPilot', selectedPilotSid);
-    this.selectedPilotSubject.next(null);
+    this.pilot = null;
   }
 
   zoomResetted(): boolean {
@@ -416,7 +414,7 @@ export class AirportMapService {
   }
 
   private updatePilotClearance = (payload: ClearancePayload): void => {
-    const currentPilot = this.selectedPilotSubject.value;
+    const currentPilot = this.pilot;
     if (!currentPilot || currentPilot.sid !== payload.pilot_sid) return;
 
     const { kind, instruction, coords, issued_at } = payload.clearance;
@@ -429,6 +427,6 @@ export class AirportMapService {
     };
 
     currentPilot.clearances[kind] = clearance;
-    this.selectedPilotSubject.next(currentPilot);
+    this.pilot = currentPilot;
   }
 }
