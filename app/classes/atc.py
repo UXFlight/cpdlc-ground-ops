@@ -6,11 +6,13 @@ from app.utils.constants import ACTION_WORKFLOW, DEFAULT_TIMER_DURATION, PUSHBAC
 
 class Atc:
     def __init__(self, atc_id: str):
-        self.atc_id = atc_id
+        self.atc_id: str = atc_id
+        self.selected_aircraft_id: str = ""
     
     def to_public(self) -> AtcPublicView:
         return {
             "sid": self.atc_id,
+            "selectedAircraft": self.selected_aircraft_id
         }
         
     def handle_response(self, payload: dict, pilot: Pilot) -> UpdateStepData:
