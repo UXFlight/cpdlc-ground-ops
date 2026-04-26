@@ -6,7 +6,7 @@ from app.managers.log_manager import logger
 from app.utils.color import set_pilot_color
 from app.utils.constants import ACTION_DEFINITIONS, CANCEL, CLEARANCE_CODES, DEFAULT_STEPS, EXPECTED_TAXI_CLEARANCE, PUSHBACK, STANDBY, STANDBY_TIMER_DURATION, TAXI_CLEARANCE, UNABLE, WILCO, get_valid_transitions
 from app.utils.parse import step_code_to_clearance_type
-from app.utils.socket_constants import ATC_ROOM
+from app.utils.socket_constants import ATC_ROOM, ATC_TIMEOUT, NEW_REQUEST_SEND, TICK
 from app.utils.time_utils import get_current_timestamp, get_formatted_time
 from app.managers import TimerManager
 from app.classes.socket import SocketService
@@ -366,7 +366,7 @@ class Pilot:
         )
 
     def handle_tick(self, step_code: str, step: Step, socket: SocketService):
-        socket.send("tick", {
+        socket.send(TICK, {
             "step_code": step_code,
             "timeLeft": step.time_left
         }, room=self.sid)
@@ -389,7 +389,7 @@ class Pilot:
 
         update = step.apply_update(update)
 
-        socket.send("atcTimeout", {
+        socket.send(ATC_TIMEOUT, {
             "step_code": step_code,
             "status": update.status.value,
             "message": update.message,
@@ -397,7 +397,7 @@ class Pilot:
             "timeLeft": update.time_left,
         }, room=self.sid)
         
-        socket.send("new_request", update.to_atc_payload(), room=ATC_ROOM)
+        socket.send(NEW_REQUEST_SEND, update.to_atc_payload(), room=ATC_ROOM)
 
         # gss_client.send_update_step(update.to_dict()) #keeping track of gss
         logger.log_event(self.sid, "TIMEOUT", f"{step_code} expired.")
