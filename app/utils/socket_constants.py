@@ -13,6 +13,7 @@ GET_AIRPORT_MAP_DATA_LISTEN="getAirportMapData"
 GET_CLEARANCE_LISTEN="getClearance"
 CANCEL_CLEARANCE_LISTEN="cancelClearance"
 ATC_RESPONSE_LISTEN="atcResponse"
+SELECT_AIRCRAFT="selectAircraft"
 
 ## == Send Events
 CONNECTED_TO_ATC_SEND="connectedToAtc"

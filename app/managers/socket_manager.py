@@ -28,6 +28,7 @@ from app.utils.socket_constants import (
     PROPOSED_CLEARANCE_SEND,
     REQUEST_ACK_SEND,
     REQUEST_CANCELLED_SEND,
+    SELECT_AIRCRAFT,
     SEND_ACTION_LISTEN,
     SEND_REQUEST_LISTEN,
 )
@@ -80,6 +81,7 @@ class SocketManager:
         self.socket.listen(GET_AIRPORT_MAP_DATA_LISTEN, self.handle_map_request)
         self.socket.listen(GET_CLEARANCE_LISTEN, self.on_clearance_request)
         self.socket.listen(CANCEL_CLEARANCE_LISTEN, self.on_clearance_cancel)
+        self.socket.listen(SELECT_AIRCRAFT, self.on_aircraft_selected)
 
         # GLOBAL EVENTS
         self.socket.listen(ATC_RESPONSE_LISTEN, self.on_atc_response)
@@ -572,3 +574,34 @@ class SocketManager:
             self._emit(sid, ERROR_SEND, {"message": str(e)})
             logger.log_error(pilot_id=sid, context="CLEARANCE", error=str(e))
             self.metrics.record_error()
+
+    def on_aircraft_selected(self, pilot_sid: str):
+        sid = request.sid
+        atc = self.atc_manager.get(sid)
+
+        if not atc:
+            self._emit(sid, ERROR_SEND, {"message": "ATC not connected"})
+            logger.log_error(pilot_id=sid, context="CLEARANCE", error="ATC not connected")
+            self.metrics.record_error()
+            return
+
+        if not pilot_sid:
+            self._emit(sid, ERROR_SEND, {"message": "Missing pilot SID"})
+            logger.log_error(pilot_id=sid, context="CLEARANCE", error="Missing pilot SID")
+            self.metrics.record_error()
+            return
+
+        pilot = self.pilots.get(pilot_sid)
+
+        if not pilot:
+            self._emit(sid, ERROR_SEND, {"message": f"Pilot with SID {pilot_sid} does not exist"})
+            logger.log_error(pilot_id=sid, context="CLEARANCE", error=f"Pilot not found: {pilot_sid}")
+            self.metrics.record_error()
+            return
+
+        if atc.selected_aircraft_id == pilot_sid:
+            atc.selected_aircraft_id = None
+        else:
+            atc.selected_aircraft_id = pilot_sid
+
+        self._emit(ATC_ROOM, ATC_LIST_SEND, self.atc_manager.get_all())
