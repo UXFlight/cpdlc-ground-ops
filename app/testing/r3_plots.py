@@ -54,45 +54,45 @@ def _plot_latency(points: list[dict], plot_dir: str) -> None:
     xs = [p["total"] for p in points]
     p50s = [p["p50"] for p in points]
     p95s = [p["p95"] for p in points]
-    plt.figure()
-    plt.plot(xs, p50s, color="blue", marker="o", linestyle="-", linewidth=2, markersize=6,
-             label="p50 end-to-end latency")
-    plt.plot(xs, p95s, color="red", marker="s", linestyle="-", linewidth=2, markersize=6,
-             label="p95 end-to-end latency")
+    fig, ax = plt.subplots(figsize=(7.0, 4.3))
+    ax.plot(xs, p50s, color="blue", marker="o", linestyle="-", linewidth=1.8, markersize=6,
+            label="p50 end-to-end latency")
+    ax.plot(xs, p95s, color="red", marker="s", linestyle="-", linewidth=1.8, markersize=6,
+            label="p95 end-to-end latency")
     labels = [f"({p['atc']},{p['pilots']})" for p in points]
     for x, y, label in zip(xs, p95s, labels):
-        plt.annotate(label, (x, y), textcoords="offset points", xytext=(0, 6),
-                     ha="center", fontsize=8)
-    plt.xlabel("Total clients (atc, pilots)", fontsize=12)
-    plt.ylabel("End-to-end latency (ms)", fontsize=12)
-    plt.title("R3 Max Capacity Test End-to-End Latency", fontsize=14)
-    plt.grid(True, linestyle="--", linewidth=0.6, alpha=0.5)
-    plt.legend(fontsize=11)
-    plt.tight_layout()
-    plt.savefig(os.path.join(plot_dir, "R3_latency_vs_load.png"), dpi=200)
-    plt.savefig(os.path.join(plot_dir, "R3_latency_vs_load.pdf"))
-    plt.close()
+        ax.annotate(label, (x, y), textcoords="offset points", xytext=(0, 6),
+                    ha="center", fontsize=8)
+    ax.set_xlabel("Total clients (ATC, pilots)", fontsize=11)
+    ax.set_ylabel("End-to-end latency (ms)", fontsize=11)
+    ax.grid(True, linestyle="--", linewidth=0.6, alpha=0.5)
+    ax.legend(fontsize=10)
+    ax.tick_params(labelsize=10)
+    fig.tight_layout()
+    fig.savefig(os.path.join(plot_dir, "R3_latency_vs_load.png"), dpi=300, bbox_inches="tight")
+    fig.savefig(os.path.join(plot_dir, "R3_latency_vs_load.pdf"), bbox_inches="tight")
+    plt.close(fig)
 
 def _plot_server(points: list[dict], plot_dir: str) -> None:
     import matplotlib.pyplot as plt
     xs = [p["total"] for p in points]
     ys = [p["srv_p95"] for p in points]
-    plt.figure()
-    plt.plot(xs, ys, color="red", marker="s", linestyle="-", linewidth=2, markersize=6,
-             label="p95 server processing latency")
+    fig, ax = plt.subplots(figsize=(7.0, 4.3))
+    ax.plot(xs, ys, color="red", marker="s", linestyle="-", linewidth=1.8, markersize=6,
+            label="p95 server processing latency")
     labels = [f"({p['atc']},{p['pilots']})" for p in points]
     for x, y, label in zip(xs, ys, labels):
-        plt.annotate(label, (x, y), textcoords="offset points", xytext=(0, 6),
-                     ha="center", fontsize=8)
-    plt.xlabel("Total clients (atc, pilots)", fontsize=12)
-    plt.ylabel("Server processing latency (ms)", fontsize=12)
-    plt.title("R3 Max Capacity Test Server Processing Latency", fontsize=14)
-    plt.grid(True, linestyle="--", linewidth=0.6, alpha=0.5)
-    plt.legend(fontsize=11)
-    plt.tight_layout()
-    plt.savefig(os.path.join(plot_dir, "R3_server_processing_vs_load.png"), dpi=200)
-    plt.savefig(os.path.join(plot_dir, "R3_server_processing_vs_load.pdf"))
-    plt.close()
+        ax.annotate(label, (x, y), textcoords="offset points", xytext=(0, 6),
+                    ha="center", fontsize=8)
+    ax.set_xlabel("Total clients (ATC, pilots)", fontsize=11)
+    ax.set_ylabel("Server processing latency (ms)", fontsize=11)
+    ax.grid(True, linestyle="--", linewidth=0.6, alpha=0.5)
+    ax.legend(fontsize=10)
+    ax.tick_params(labelsize=10)
+    fig.tight_layout()
+    fig.savefig(os.path.join(plot_dir, "R3_server_processing_vs_load.png"), dpi=300, bbox_inches="tight")
+    fig.savefig(os.path.join(plot_dir, "R3_server_processing_vs_load.pdf"), bbox_inches="tight")
+    plt.close(fig)
 
 
 def main() -> None:
