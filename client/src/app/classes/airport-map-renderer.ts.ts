@@ -40,7 +40,7 @@ export class AirportMapRenderer {
       this.strokePath(points, '#6b7280', outerWidth);
       this.strokePath(points, AIRPORT_STYLES.runway, innerWidth);
 
-      if (zoom >= 1.8) {
+      if (zoom >= 1.5) {
         const centerWidth = this.getScaledWidth(1.15, zoom, 1, 2.2, 0.35);
         this.strokePath(points, 'rgba(248,250,252,0.6)', centerWidth, [12, 10], 'butt');
       }

@@ -14,20 +14,27 @@ import { ClearanceBlockComponent } from './clearance-block/clearance-block.compo
 import { Atc } from '@app/interfaces/Atc';
 
 enum CardinalDirection {
-    N = 'N',
-    NE = 'NE',
-    E = 'E',
-    SE = 'SE',
-    S = 'S',
-    SO = 'SO',
-    O = 'O',
-    NO = 'NO',
-  }
+  N = 'N',
+  NE = 'NE',
+  E = 'E',
+  SE = 'SE',
+  S = 'S',
+  SO = 'SO',
+  O = 'O',
+  NO = 'NO',
+}
 
 @Component({
   selector: 'app-logs',
   standalone: true,
-  imports: [FormsModule, AirportMapComponent, RequestLogComponent, NgStyle, ClearancesStickerComponent, ClearanceBlockComponent],
+  imports: [
+    FormsModule,
+    AirportMapComponent,
+    RequestLogComponent,
+    NgStyle,
+    ClearancesStickerComponent,
+    ClearanceBlockComponent,
+  ],
   templateUrl: './logs.component.html',
   styleUrl: './logs.component.scss',
   animations: [
@@ -48,32 +55,30 @@ enum CardinalDirection {
     ]),
   ],
 })
-
 export class LogsComponent implements OnInit, OnDestroy {
-  private selectedAircraftSubscription: Subscription;
+  private selectedAircraftSubscription?: Subscription;
+  private pilotsSubscription?: Subscription;
+  private atcListSubscription?: Subscription;
+  private selectedRequestSubscription?: Subscription;
+
+  readonly maxVisibleAtcIndicators = 4;
+
   selectedAircraft: PilotPublicView | null = null;
-
-  pilotsSubscription: Subscription;
   pilots: PilotPublicView[] = [];
+  atcList: Atc[] = [];
 
-  atcListSubscription: Subscription;
-  atcList: Atc[] = []
-  
-  selectedRequestSubscription: Subscription;
   selectedRequestInfo: SelectedRequestInfo = {
     stepCode: '',
-    requestId: ''
+    requestId: '',
   };
-  
-  // events attributes
+
   controlsPanelActive = true;
   currIdx = 0;
-  
+
   constructor(
     private readonly mainPageService: MainPageService,
     private readonly airportMapService: AirportMapService
-  ) {
-  }
+  ) {}
 
   ngOnInit(): void {
     this.configSubscription();
@@ -81,36 +86,58 @@ export class LogsComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.selectedAircraftSubscription?.unsubscribe();
+    this.pilotsSubscription?.unsubscribe();
+    this.selectedRequestSubscription?.unsubscribe();
     this.atcListSubscription?.unsubscribe();
+  }
+
+  get focusedAtcs(): Atc[] {
+    if (!this.selectedAircraft) return [];
+
+    return this.atcList.filter(
+      (atc) => atc.selectedAircraft === this.selectedAircraft?.sid
+    );
+  }
+
+  get focusedAtcsTitle(): string {
+    return `Aircraft currently viewed by controllers: ${this.focusedAtcs
+      .map((atc) => atc.sid)
+      .join(', ')}`;
   }
 
   configSubscription(): void {
     this.pilotsSubscription = this.mainPageService.pilotsPreviews$.subscribe((pilots) => {
-        this.pilots = pilots;
-    });
-    this.selectedAircraftSubscription = this.airportMapService.selectedAircraft$.subscribe((aircraft) => {
-        if (!aircraft) this.airportMapService.resetZoomAndPan();
-        this.selectedAircraft = aircraft;
-        this.currIdx = 0;
+      this.pilots = pilots;
     });
 
-    this.selectedRequestSubscription = this.mainPageService.selectedRequestId$.subscribe((requestInfo: SelectedRequestInfo) => {
-      this.selectedRequestInfo = requestInfo;
+    this.selectedAircraftSubscription = this.airportMapService.selectedAircraft$.subscribe((aircraft) => {
+      if (!aircraft) this.airportMapService.resetZoomAndPan();
+
+      this.selectedAircraft = aircraft;
+      this.currIdx = 0;
     });
+
+    this.selectedRequestSubscription = this.mainPageService.selectedRequestId$.subscribe(
+      (requestInfo: SelectedRequestInfo) => {
+        this.selectedRequestInfo = requestInfo;
+      }
+    );
 
     this.atcListSubscription = this.mainPageService.atcList$.subscribe((atcList: Atc[]) => {
       this.atcList = atcList;
-    })
+    });
   }
 
-
   getActiveSteps(pilot: PilotPublicView): StepPublicView[] {
-    return this.mainPageService.getActiveStep(pilot.sid).filter(step => !['DM_135', 'DM_136'].includes(step.step_code));
+    return this.mainPageService
+      .getActiveStep(pilot.sid)
+      .filter((step) => !['DM_135', 'DM_136'].includes(step.step_code));
   }
 
   navigateToPilot(direction: 'next' | 'prev'): void {
     const pilots = this.mainPageService.pilotsPreviewsSubject.getValue();
     if (!this.selectedAircraft || pilots.length === 0) return;
+
     this.airportMapService.navigateToPilot(pilots, direction);
   }
 
@@ -124,47 +151,52 @@ export class LogsComponent implements OnInit, OnDestroy {
     if (event.key === 'Tab') {
       event.preventDefault();
       this.controlsPanelActive = !this.controlsPanelActive;
-      return
+      return;
     }
 
     if (event.key === 'Escape') return this.airportMapService.resetZoom();
+
     if (event.ctrlKey && event.key === 'r') {
-        event.preventDefault();
-        return this.airportMapService.resetZoom();
+      event.preventDefault();
+      return this.airportMapService.resetZoom();
     }
 
     if (event.ctrlKey && event.key === 's') {
-        event.preventDefault();
-        return this.airportMapService.toggleLabels();
+      event.preventDefault();
+      return this.airportMapService.toggleLabels();
     }
 
-    if (event.key === 'ArrowLeft') return this.airportMapService.navigateToPilot(this.pilots, 'prev');
-    if (event.key === 'ArrowRight') return this.airportMapService.navigateToPilot(this.pilots, 'next');
+    if (event.key === 'ArrowLeft') {
+      return this.airportMapService.navigateToPilot(this.pilots, 'prev');
+    }
+
+    if (event.key === 'ArrowRight') {
+      return this.airportMapService.navigateToPilot(this.pilots, 'next');
+    }
 
     if (!this.selectedAircraft) return;
-    const planeSteps = Object.values(this.selectedAircraft.steps).filter(step => !['DM_135', 'DM_136'].includes(step.step_code));
+
+    const planeSteps = Object.values(this.selectedAircraft.steps).filter(
+      (step) => !['DM_135', 'DM_136'].includes(step.step_code)
+    );
+
     const len = planeSteps.length;
-    let requestInfo: SelectedRequestInfo = {
-        stepCode: '',
-        requestId: ''
+
+    if (len === 0) return;
+
+    const requestInfo: SelectedRequestInfo = {
+      stepCode: planeSteps[this.currIdx].step_code,
+      requestId: planeSteps[this.currIdx].request_id,
     };
 
     if (event.key === 'ArrowUp') {
-      if (len === 0) return;
-      requestInfo.stepCode = planeSteps[this.currIdx].step_code;
-      requestInfo.requestId = planeSteps[this.currIdx].request_id;
-        this.currIdx = (this.currIdx - 1 + len) % len;;
-
-        return this.mainPageService.selectRequest(requestInfo);
+      this.currIdx = (this.currIdx - 1 + len) % len;
+      return this.mainPageService.selectRequest(requestInfo);
     }
 
     if (event.key === 'ArrowDown') {
-        if (len === 0) return;
-        requestInfo.stepCode = planeSteps[this.currIdx].step_code;
-        requestInfo.requestId = planeSteps[this.currIdx].request_id;
-        this.currIdx = (this.currIdx + 1) % len;
-
-        return this.mainPageService.selectRequest(requestInfo);
+      this.currIdx = (this.currIdx + 1) % len;
+      return this.mainPageService.selectRequest(requestInfo);
     }
   }
 
@@ -182,20 +214,20 @@ export class LogsComponent implements OnInit, OnDestroy {
     if (normalized < 202.5) return CardinalDirection.S;
     if (normalized < 247.5) return CardinalDirection.SO;
     if (normalized < 292.5) return CardinalDirection.O;
+
     return CardinalDirection.NO;
   }
 
-  // clearances
   getMRecentClearance(): Clearance | null {
     if (!this.selectedAircraft || !this.selectedAircraft.clearances) return null;
-  
-    const priority = ["route_change", "taxi", "expected"];
-  
+
+    const priority = ['route_change', 'taxi', 'expected'];
+
     for (const kind of priority) {
-      const c = this.selectedAircraft.clearances[kind];
-      if (c && c.instruction.trim() !== "") return c;
+      const clearance = this.selectedAircraft.clearances[kind];
+      if (clearance && clearance.instruction.trim() !== '') return clearance;
     }
-  
+
     return null;
   }
 }

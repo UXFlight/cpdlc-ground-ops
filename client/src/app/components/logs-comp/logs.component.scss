@@ -9,7 +9,6 @@
     position: relative;
 }
 
-
 .clearances-sticker {
     position: absolute;
     top: 1rem;
@@ -47,21 +46,36 @@
 
     .pilot-header {
         display: flex;
-        justify-content: space-between;
         align-items: center;
         gap: 0.75rem;
         margin-bottom: 0.75rem;
 
-        .pilot-id,
-        .pilot-nav {
-            flex: 1;
-        }
-
         .pilot-id {
+            flex: 1 1 auto;
+            min-width: 0;
             font-size: 1.35rem;
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.05em;
+        }
+
+        .pilot-nav {
+            flex: 0 0 auto;
+            display: inline-flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 0.4rem;
+            padding: 0.3rem;
+        }
+
+        .atc-indicators {
+            flex: 0 0 auto;
+            display: inline-flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 0.35rem;
+            max-width: 55%;
+            overflow: hidden;
         }
 
         .atc-indicator {
@@ -69,18 +83,22 @@
             align-items: center;
             gap: 0.4rem;
 
-            max-width: 140px;
+            max-width: 150px;
             padding: 0.32rem 0.55rem;
             border-radius: 999px;
 
-            background: rgb(var(--color-responded-rgb) / 12%);
             border: 1px solid rgb(var(--color-responded-rgb) / 32%);
-            color: var(--text-primary);
+            color: var(--color-responded);
 
             font-size: 0.78rem;
             font-weight: 650;
             line-height: 1;
             white-space: nowrap;
+        }
+
+        .atc-indicator--compact {
+            max-width: none;
+            padding-inline: 0.65rem;
         }
 
         .atc-dot {
@@ -91,14 +109,6 @@
             border-radius: 999px;
             background: var(--color-responded);
             box-shadow: 0 0 0 3px rgb(var(--color-responded-rgb) / 18%);
-        }
-
-        .pilot-nav {
-            display: inline-flex;
-            align-items: center;
-            justify-content: flex-end;
-            gap: 0.4rem;
-            padding: 0.3rem;
         }
 
         .nav-btn {
@@ -134,7 +144,6 @@
                 border-color: rgba(148, 163, 184, 0.22);
                 color: var(--text-primary);
             }
-
         }
     }
 
@@ -168,4 +177,3 @@
         padding: 0.5rem;
     }
 }
-

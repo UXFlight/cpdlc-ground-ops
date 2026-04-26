@@ -14,17 +14,6 @@
                         {{ selectedAircraft.sid.substring(0, 4).toUpperCase() }}
                     </div>
 
-                    <div class="atc-indicators">
-                        @for (atc of atcList; track atc.sid) {
-                            @if (atc.selectedAircraft === selectedAircraft.sid) {
-                                <div class="atc-indicator" [title]="'Controller ' + atc.sid + ' is currently viewing this aircraft'">
-                                    <span class="atc-dot"></span>
-                                    <span>{{ atc.sid }}</span>
-                                </div>
-                            }
-                        }
-                    </div>
-            
                     @if (hasMultiplePilot()) {
                         <div class="pilot-nav">
                             <button
@@ -52,6 +41,30 @@
                             </button>
                         </div>
                     }
+
+                    <div class="atc-indicators">
+                        @if (focusedAtcs.length > 0) {
+                            @if (focusedAtcs.length <= maxVisibleAtcIndicators) {
+                                @for (atc of focusedAtcs; track atc.sid) {
+                                    <div
+                                        class="atc-indicator"
+                                        [title]="'Aircraft currently viewed by controller ' + atc.sid"
+                                    >
+                                        <span class="atc-dot"></span>
+                                        <span>{{ atc.sid }}</span>
+                                    </div>
+                                }
+                            } @else {
+                                <div
+                                    class="atc-indicator atc-indicator--compact"
+                                    [title]="focusedAtcsTitle"
+                                >
+                                    <span class="atc-dot"></span>
+                                    <span>Viewed by {{ focusedAtcs.length }} controllers</span>
+                                </div>
+                            }
+                        }
+                    </div>
                 </div>
             
                 @if (selectedAircraft.plane) {
@@ -70,11 +83,9 @@
                 }
             </div>
         </div>
-          
     }
 
     @if (controlsPanelActive) {
         <app-clearances-sticker class="clearances-sticker"></app-clearances-sticker>
     }
-      
 </div>
