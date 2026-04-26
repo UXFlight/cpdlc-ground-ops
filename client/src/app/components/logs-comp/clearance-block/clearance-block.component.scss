@@ -263,7 +263,6 @@
 
         .btn:hover,
         .btn:focus-visible {
-            transform: translateY(-1px);
             filter: brightness(1.1);
             box-shadow: 0 0 0 2px var(--text-muted);
         }
@@ -288,6 +287,11 @@
             color: white;
         }
 
+        .cancel-btn {
+            background-color: var(--bg-body);
+            color: white;
+        }
+
         .confirm {
             background-color: var(--color-responded);
             color: white;
@@ -306,7 +310,7 @@
 }
 
 .clearance-card.request-clearance {
-    border: 2px dashed var(--text-muted);
+    border: 1px solid var(--text-muted);
     background-color: var(--bg-container);
     padding: 1rem;
     border-radius: 10px;
@@ -376,9 +380,7 @@
         }
 
         &:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            border-color: var(--text-muted);
+            display: none;
         }
     }
 }

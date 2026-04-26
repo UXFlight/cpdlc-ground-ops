@@ -2,16 +2,27 @@
     <!-- GLOBAL VIEW -->
     <app-airport-map />
     
-    @if (selectedPilot) {
+    @if (selectedAircraft) {
         <div class="selected-pilot-info">
             <div>
                 <div class="pilot-header">
                     <div 
                         class="pilot-id" 
-                        [ngStyle]="{'color': selectedPilot.color}"
-                        [title]="'id: ' + selectedPilot.sid"
+                        [ngStyle]="{'color': selectedAircraft.color}"
+                        [title]="'id: ' + selectedAircraft.sid"
                     >
-                        {{ selectedPilot.sid.substring(0, 4).toUpperCase() }}
+                        {{ selectedAircraft.sid.substring(0, 4).toUpperCase() }}
+                    </div>
+
+                    <div class="atc-indicators">
+                        @for (atc of atcList; track atc.sid) {
+                            @if (atc.selectedAircraft === selectedAircraft.sid) {
+                                <div class="atc-indicator" [title]="'Controller ' + atc.sid + ' is currently viewing this aircraft'">
+                                    <span class="atc-dot"></span>
+                                    <span>{{ atc.sid }}</span>
+                                </div>
+                            }
+                        }
                     </div>
             
                     @if (hasMultiplePilot()) {
@@ -43,18 +54,18 @@
                     }
                 </div>
             
-                @if (selectedPilot.plane) {
+                @if (selectedAircraft.plane) {
                     <div class="position-info">
-                        <span><strong>Pos:</strong> {{ selectedPilot.plane.current_pos.name }}</span>
-                        <span><strong>Dest:</strong> {{ selectedPilot.plane.final_pos.name }}</span>
-                        <span><strong>Heading:</strong> {{ formatHeading(selectedPilot.plane.current_heading) }}</span>
+                        <span><strong>Pos:</strong> {{ selectedAircraft.plane.current_pos.name }}</span>
+                        <span><strong>Dest:</strong> {{ selectedAircraft.plane.final_pos.name }}</span>
+                        <span><strong>Heading:</strong> {{ formatHeading(selectedAircraft.plane.current_heading) }}</span>
                     </div>
                 }
             </div>
             
             <div class="active-steps">
                 <app-clearance-block [clearance]="getMRecentClearance()"></app-clearance-block>
-                @for (step of getActiveSteps(selectedPilot); track step.request_id) {
+                @for (step of getActiveSteps(selectedAircraft); track step.request_id) {
                     <app-request-log [step]="step"></app-request-log>
                 }
             </div>

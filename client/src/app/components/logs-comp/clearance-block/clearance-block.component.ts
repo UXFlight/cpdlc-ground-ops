@@ -42,8 +42,8 @@ export class ClearanceBlockComponent implements OnInit, OnDestroy {
   }
 
   configSubscription(): void {
-    this.selectedPilotSubcription = this.airportMapService.selectedPilot$.subscribe((pilot) => {
-      this.selectedPilot = pilot;
+    this.selectedPilotSubcription = this.airportMapService.selectedAircraft$.subscribe((aircraft) => {
+      this.selectedPilot = aircraft;
       this.response = '';
     });
   }

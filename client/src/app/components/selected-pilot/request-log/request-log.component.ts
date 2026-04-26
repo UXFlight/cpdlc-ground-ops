@@ -82,7 +82,7 @@ export class RequestLogComponent implements OnInit, OnDestroy, AfterViewInit {
       this.smartResponses = responses;
     });
 
-    this.selectedPilotSubscription = this.airportMapService.selectedPilot$.subscribe((pilot: PilotPublicView | null) => {
+    this.selectedPilotSubscription = this.airportMapService.selectedAircraft$.subscribe((pilot: PilotPublicView | null) => {
       this.setSelectedPilotSid(pilot?.sid)
     });
   }

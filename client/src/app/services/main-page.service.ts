@@ -7,7 +7,7 @@ import { Atc } from '@app/interfaces/Atc';
 import { SelectedRequestInfo } from '@app/interfaces/SelectedRequest';
 import { ResponseCache, StepUpdate } from '@app/interfaces/Payloads'; // SmartResponse
 import { AirportMapService } from './airport-map.service';
-import { LABELS } from '@app/modules/constants';
+import { LABELS, SOCKET_LISTENS, SOCKET_SENDS } from '@app/modules/constants';
 
 @Injectable({
   providedIn: 'root'
@@ -46,23 +46,22 @@ export class MainPageService {
 
   private listenToSocketEvents(): void {
     // connections events
-    this.clientSocketService.listen('connect', this.onConnect);
-    this.clientSocketService.listen('disconnect', this.onDisconnect);
+    this.clientSocketService.listen(SOCKET_LISTENS.CONNECT, this.onConnect);
+    this.clientSocketService.listen(SOCKET_LISTENS.DISCONNECT, this.onDisconnect);
 
     // pilot events
-    this.clientSocketService.listen<PilotPublicView[]>('pilot_list', this.pilotListUpdate);
-    this.clientSocketService.listen<PilotPublicView>('pilot_connected', this.onNewPilotPublicView)
-    this.clientSocketService.listen<string>('pilot_disconnected', this.onPilotDisconnect)
-    this.clientSocketService.listen<AckUpdatePayload>('new_request', this.onNewRequest)
-    this.clientSocketService.listen<ClearancePayload>('proposedClearance', this.updatePilotClearance);
-    this.clientSocketService.listen<ClearancesCancelledPayload>('clearancesCancelled', this.handleCancelClearance);
+    this.clientSocketService.listen<PilotPublicView[]>(SOCKET_LISTENS.PILOT_LIST, this.pilotListUpdate);
+    this.clientSocketService.listen<PilotPublicView>(SOCKET_LISTENS.NEW_PILOT_CONNECTED, this.onNewPilotPublicView)
+    this.clientSocketService.listen<string>(SOCKET_LISTENS.PILOT_DISCONNECTED, this.onPilotDisconnect)
+    this.clientSocketService.listen<AckUpdatePayload>(SOCKET_LISTENS.NEW_REQUEST, this.onNewRequest)
+    this.clientSocketService.listen<ClearancePayload>(SOCKET_LISTENS.PROPOSED_CLEARANCE, this.updatePilotClearance);
+    this.clientSocketService.listen<ClearancesCancelledPayload>(SOCKET_LISTENS.CLEARANCE_CANCELLED, this.handleCancelClearance);
 
     // atc events 
-    this.clientSocketService.listen<Atc[]>('atc_list', this.onAtcListUpdate);
+    this.clientSocketService.listen<Atc[]>(SOCKET_LISTENS.ATC_LIST, this.onAtcListUpdate);
 
-    
     // global error handling
-    this.clientSocketService.listen<{message:string}>('error', this.onError)
+    this.clientSocketService.listen<{message:string}>(SOCKET_LISTENS.ERROR, this.onError)
   }
 
   private buildStepViewFromAck(payload: AckUpdatePayload): StepPublicView {
@@ -102,7 +101,7 @@ export class MainPageService {
   
     this.pilotsPreviewsSubject.next([...currentPreviews]);
   
-    this.airportMapService.pilot = pilot;
+    this.airportMapService.selectedAircraft = pilot;
   
     const lastIndx = pilot.history.length - 1;
     const currentStep = pilot.history[lastIndx];
@@ -145,14 +144,14 @@ export class MainPageService {
   }
 
   selectPilot(pilotSid: string): void {
-    if (this.airportMapService.pilot?.sid === pilotSid) {
-      this.airportMapService.pilot = null;
+    if (this.airportMapService.selectedAircraft?.sid === pilotSid) {
+      this.airportMapService.selectedAircraft = null;
       return;
     }
     const currentPreviews = this.pilotsPreviewsSubject.getValue();
     const selectedPilot = currentPreviews.find(pilot => pilot.sid === pilotSid) || null;
     if (!this.isPilotRequest(selectedPilot)) this.selectedRequestIdSubject.next({stepCode: "", requestId: ""});
-    this.airportMapService.pilot = selectedPilot;
+    this.airportMapService.selectedAircraft = selectedPilot;
   }
 
   isPilotRequest(pilot : PilotPublicView | null) : boolean {
@@ -174,7 +173,7 @@ export class MainPageService {
   private onDisconnect = () => {
     this.isConnectedSubject.next(false);
     this.pilotsPreviewsSubject.next([]);
-    this.airportMapService.pilot = null;
+    this.airportMapService.selectedAircraft = null;
     this.selectedRequestIdSubject.next({stepCode: "", requestId: ""});
   }
 
@@ -184,16 +183,14 @@ export class MainPageService {
     const currentPreviews = this.pilotsPreviewsSubject.getValue();
     this.pilotsPreviewsSubject.next([...currentPreviews, preview]);
   
-    if (this.airportMapService.pilot?.sid === preview.sid) {
-      this.airportMapService.pilot = preview;
-    }
+    if (this.airportMapService.selectedAircraft?.sid === preview.sid) this.airportMapService.selectedAircraft = preview;
   };
     
   private onPilotDisconnect = (pilotSid: string) => {
     const currentPreviews = this.pilotsPreviewsSubject.getValue();
     const updatedPreviews = currentPreviews.filter(pilot => pilot.sid !== pilotSid);
     this.pilotsPreviewsSubject.next(updatedPreviews);
-    if (this.airportMapService.pilot?.sid === pilotSid) this.selectPilot(pilotSid);
+    if (this.airportMapService.selectedAircraft?.sid === pilotSid) this.selectPilot(pilotSid);
   }
 
   private onNewRequest = (payload: AckUpdatePayload) => {
@@ -215,7 +212,7 @@ export class MainPageService {
     const kind = payload.clearance.kind;
     pilot.clearances[kind] = payload.clearance;
     this.pilotsPreviewsSubject.next([...currentPreviews]);
-    if (this.airportMapService.pilot?.sid === payload.pilot_sid) this.airportMapService.pilot = pilot;
+    if (this.airportMapService.selectedAircraft?.sid === payload.pilot_sid) this.airportMapService.selectedAircraft = pilot;
   }
 
   private handleCancelClearance = (payload: ClearancesCancelledPayload) => {
@@ -226,7 +223,7 @@ export class MainPageService {
     if (!pilot) return;
     pilot.clearances = payload.clearances;
     this.pilotsPreviewsSubject.next([...currentPreviews]);
-    if (this.airportMapService.pilot?.sid === payload.pilot_sid) this.airportMapService.pilot = pilot;
+    if (this.airportMapService.selectedAircraft?.sid === payload.pilot_sid) this.airportMapService.selectedAircraft = pilot;
   }
 
   private onAtcListUpdate = (atcList: Atc[]) => {
@@ -243,7 +240,7 @@ export class MainPageService {
   // === Public ===
   // GET
   fetchPilotPublicViews(): void {
-    this.clientSocketService.send('getPilotList');
+    this.clientSocketService.send(SOCKET_SENDS.GET_PILOT_LIST);
   }
 
   fetchSmartResponse(pilotSid: string, stepCode: string): void {
@@ -252,11 +249,11 @@ export class MainPageService {
   }
 
   fetchClearance(pilot_sid: string, kind: ClearanceType) {
-    return this.clientSocketService.send('getClearance', { pilot_sid, kind });
+    return this.clientSocketService.send(SOCKET_SENDS.GET_CLEARANCE, { pilot_sid, kind });
   }
 
   cancelClearance(pilot_sid:string) {
-      return this.clientSocketService.send('cancelClearance', pilot_sid);
+      return this.clientSocketService.send(SOCKET_SENDS.CANCEL_CLEARANCE, pilot_sid);
   }
 
   // SEND
@@ -273,6 +270,6 @@ export class MainPageService {
       if (!payload[field]) return this.communicationService.handleError(errorMsg);
     }
   
-    this.clientSocketService.send('atcResponse', payload);
+    this.clientSocketService.send(SOCKET_SENDS.ATC_RESPONSE, payload);
   }
 }

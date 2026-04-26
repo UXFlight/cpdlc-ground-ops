@@ -49,9 +49,10 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
+        gap: 0.75rem;
         margin-bottom: 0.75rem;
 
-        .pilot-id, 
+        .pilot-id,
         .pilot-nav {
             flex: 1;
         }
@@ -63,9 +64,39 @@
             letter-spacing: 0.05em;
         }
 
+        .atc-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+
+            max-width: 140px;
+            padding: 0.32rem 0.55rem;
+            border-radius: 999px;
+
+            background: rgb(var(--color-responded-rgb) / 12%);
+            border: 1px solid rgb(var(--color-responded-rgb) / 32%);
+            color: var(--text-primary);
+
+            font-size: 0.78rem;
+            font-weight: 650;
+            line-height: 1;
+            white-space: nowrap;
+        }
+
+        .atc-dot {
+            width: 0.45rem;
+            height: 0.45rem;
+            flex: 0 0 0.45rem;
+
+            border-radius: 999px;
+            background: var(--color-responded);
+            box-shadow: 0 0 0 3px rgb(var(--color-responded-rgb) / 18%);
+        }
+
         .pilot-nav {
             display: inline-flex;
             align-items: center;
+            justify-content: flex-end;
             gap: 0.4rem;
             padding: 0.3rem;
         }

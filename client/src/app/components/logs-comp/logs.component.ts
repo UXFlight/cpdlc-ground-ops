@@ -2,7 +2,6 @@ import { FormsModule } from '@angular/forms';
 import { Component, HostListener, OnDestroy, OnInit } from '@angular/core';
 import { MainPageService } from '@app/services/main-page.service';
 import { animate, style, transition, trigger } from '@angular/animations';
-import { LABELS } from '@app/modules/constants';
 import { Subscription } from 'rxjs';
 import { AirportMapComponent } from '../airport-map/airport-map.component';
 import { AirportMapService } from '@app/services/airport-map.service';
@@ -12,6 +11,7 @@ import { RequestLogComponent } from '../selected-pilot/request-log/request-log.c
 import { ClearancesStickerComponent } from '../clearances-sticker/clearances-sticker.component';
 import { SelectedRequestInfo } from '@app/interfaces/SelectedRequest';
 import { ClearanceBlockComponent } from './clearance-block/clearance-block.component';
+import { Atc } from '@app/interfaces/Atc';
 
 enum CardinalDirection {
     N = 'N',
@@ -50,27 +50,25 @@ enum CardinalDirection {
 })
 
 export class LogsComponent implements OnInit, OnDestroy {
-  private selectedPilotSubscription: Subscription;
+  private selectedAircraftSubscription: Subscription;
+  selectedAircraft: PilotPublicView | null = null;
 
-  selectedPilot: PilotPublicView | null = null;
-
-  defaultLabels = LABELS;
-
-  // events attributes
-  controlsPanelActive = true;
-
-  currIdx = 0;
+  pilotsSubscription: Subscription;
   pilots: PilotPublicView[] = [];
 
+  atcListSubscription: Subscription;
+  atcList: Atc[] = []
+  
+  selectedRequestSubscription: Subscription;
   selectedRequestInfo: SelectedRequestInfo = {
     stepCode: '',
     requestId: ''
   };
-
-  // sunscriptions
-  selectedRequestSubscription: Subscription;
-  pilotsSubscription: Subscription;
-
+  
+  // events attributes
+  controlsPanelActive = true;
+  currIdx = 0;
+  
   constructor(
     private readonly mainPageService: MainPageService,
     private readonly airportMapService: AirportMapService
@@ -82,22 +80,27 @@ export class LogsComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.selectedPilotSubscription?.unsubscribe();
+    this.selectedAircraftSubscription?.unsubscribe();
+    this.atcListSubscription?.unsubscribe();
   }
 
   configSubscription(): void {
     this.pilotsSubscription = this.mainPageService.pilotsPreviews$.subscribe((pilots) => {
         this.pilots = pilots;
     });
-    this.selectedPilotSubscription = this.airportMapService.selectedPilot$.subscribe((plane) => {
-        if (!plane) this.airportMapService.resetZoomAndPan();
-        this.selectedPilot = plane;
+    this.selectedAircraftSubscription = this.airportMapService.selectedAircraft$.subscribe((aircraft) => {
+        if (!aircraft) this.airportMapService.resetZoomAndPan();
+        this.selectedAircraft = aircraft;
         this.currIdx = 0;
     });
 
     this.selectedRequestSubscription = this.mainPageService.selectedRequestId$.subscribe((requestInfo: SelectedRequestInfo) => {
       this.selectedRequestInfo = requestInfo;
     });
+
+    this.atcListSubscription = this.mainPageService.atcList$.subscribe((atcList: Atc[]) => {
+      this.atcList = atcList;
+    })
   }
 
 
@@ -107,7 +110,7 @@ export class LogsComponent implements OnInit, OnDestroy {
 
   navigateToPilot(direction: 'next' | 'prev'): void {
     const pilots = this.mainPageService.pilotsPreviewsSubject.getValue();
-    if (!this.selectedPilot || pilots.length === 0) return;
+    if (!this.selectedAircraft || pilots.length === 0) return;
     this.airportMapService.navigateToPilot(pilots, direction);
   }
 
@@ -138,8 +141,8 @@ export class LogsComponent implements OnInit, OnDestroy {
     if (event.key === 'ArrowLeft') return this.airportMapService.navigateToPilot(this.pilots, 'prev');
     if (event.key === 'ArrowRight') return this.airportMapService.navigateToPilot(this.pilots, 'next');
 
-    if (!this.selectedPilot) return;
-    const planeSteps = Object.values(this.selectedPilot.steps).filter(step => !['DM_135', 'DM_136'].includes(step.step_code));
+    if (!this.selectedAircraft) return;
+    const planeSteps = Object.values(this.selectedAircraft.steps).filter(step => !['DM_135', 'DM_136'].includes(step.step_code));
     const len = planeSteps.length;
     let requestInfo: SelectedRequestInfo = {
         stepCode: '',
@@ -184,12 +187,12 @@ export class LogsComponent implements OnInit, OnDestroy {
 
   // clearances
   getMRecentClearance(): Clearance | null {
-    if (!this.selectedPilot || !this.selectedPilot.clearances) return null;
+    if (!this.selectedAircraft || !this.selectedAircraft.clearances) return null;
   
     const priority = ["route_change", "taxi", "expected"];
   
     for (const kind of priority) {
-      const c = this.selectedPilot.clearances[kind];
+      const c = this.selectedAircraft.clearances[kind];
       if (c && c.instruction.trim() !== "") return c;
     }
   

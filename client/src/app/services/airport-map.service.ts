@@ -5,6 +5,7 @@ import { MapRenderOptions } from '@app/classes/airport-map-renderer.ts';
 import { Clearance, ClearancePayload, PilotPublicView } from '@app/interfaces/Publics';
 import { ClientSocketService } from './client-socket.service';
 import { AirportMapData } from '@app/interfaces/AirMap';
+import { SOCKET_SENDS } from '@app/modules/constants';
 
 @Injectable({ providedIn: 'root' })
 export class AirportMapService {
@@ -17,8 +18,8 @@ export class AirportMapService {
   private executedRouteSubject = new BehaviorSubject<AirportMapData[]>([]);
   executedRoute$: Observable<AirportMapData[]> = this.executedRouteSubject.asObservable();
 
-  selectedPilotSubject = new BehaviorSubject<PilotPublicView | null>(null);
-  selectedPilot$: Observable<PilotPublicView | null> = this.selectedPilotSubject.asObservable();
+  selectedAircraftSubject = new BehaviorSubject<PilotPublicView | null>(null);
+  selectedAircraft$: Observable<PilotPublicView | null> = this.selectedAircraftSubject.asObservable();
 
   renderSubject = new BehaviorSubject<boolean>(false);
   render$: Observable<boolean> = this.renderSubject.asObservable();
@@ -67,12 +68,12 @@ export class AirportMapService {
     this.listenToSocketEvents();
   }
   
-  set pilot(pilot: PilotPublicView | null) {
-    this.selectedPilotSubject.next(pilot);
+  set selectedAircraft(pilot: PilotPublicView | null) {
+    this.selectedAircraftSubject.next(pilot);
   }
 
-  get pilot() : PilotPublicView | null {
-    return this.selectedPilotSubject.getValue();
+  get selectedAircraft() : PilotPublicView | null {
+    return this.selectedAircraftSubject.getValue();
   }
 
   private listenToSocketEvents(): void {
@@ -82,7 +83,7 @@ export class AirportMapService {
   }
 
   fetchAirportMapData(): void {
-    this.socketClientService.send('getAirportMapData');
+    this.socketClientService.send(SOCKET_SENDS.GET_AIRPORT_MAP_DATA);
   }
 
   updateCanvasSize(width: number, height: number): void {
@@ -203,7 +204,7 @@ export class AirportMapService {
   }
 
   navigateToPilot(pilots: PilotPublicView[], direction: string): void {
-    const sid = this.pilot?.sid;
+    const sid = this.selectedAircraft?.sid;
     if (pilots.length === 0) return;
 
     let index = 0;
@@ -219,22 +220,19 @@ export class AirportMapService {
     this.focusOnPilot(pilots[newIndex]);
   }
 
-  focusOnPilot(pilot: PilotPublicView, zoomLevel = 2): void {
-    this.socketClientService.send('selectPilot', pilot.sid);
-    const selectedPilot = this.pilot;
-    if (selectedPilot && selectedPilot.sid === pilot.sid) return this.resetZoom();
-    this.pilot = pilot;
+  focusOnPilot(aircraft: PilotPublicView, zoomLevel = 2): void {
+    const selectedPilot = this.selectedAircraft;
+    if (selectedPilot && selectedPilot.sid === aircraft.sid) return this.resetZoom();
+    this.socketClientService.send(SOCKET_SENDS.SELECT_AIRCRAFT, aircraft.sid);
+    this.selectedAircraft = aircraft;
   
-    const pan = this.centerOnCoordinate(pilot.plane!.current_pos.coord, zoomLevel);
+    const pan = this.centerOnCoordinate(aircraft.plane!.current_pos.coord, zoomLevel);
     this.animateZoomAndPan(zoomLevel, pan);
   }
   
   
   animateZoomAndPan(targetZoom: number, targetPan: { x: number; y: number }, duration = 300): void {
-    if (this.prefersReducedMotion) {
-      this.setZoomAndPan(targetZoom, targetPan);
-      return;
-    }
+    if (this.prefersReducedMotion) return this.setZoomAndPan(targetZoom, targetPan);
 
     const startZoom = this.zoomFactor;
     const startPan = { ...this.panOffset };
@@ -260,7 +258,7 @@ export class AirportMapService {
   
   resetZoom(): void {
     this.resetZoomAndPan();
-    this.resetPilotSelection()
+    this.resetAircraftSelection()
   }
 
   resetZoomAndPan(): void {
@@ -271,11 +269,11 @@ export class AirportMapService {
     this.renderSubject.next(true);
   }
 
-  resetPilotSelection(): void {
-    const selectedPilotSid = this.pilot?.sid;
+  resetAircraftSelection(): void {
+    const selectedPilotSid = this.selectedAircraft?.sid;
     if (!selectedPilotSid) return;
-    this.socketClientService.send('selectPilot', selectedPilotSid);
-    this.pilot = null;
+    this.socketClientService.send(SOCKET_SENDS.SELECT_AIRCRAFT, selectedPilotSid);
+    this.selectedAircraft = null;
   }
 
   zoomResetted(): boolean {
@@ -414,7 +412,7 @@ export class AirportMapService {
   }
 
   private updatePilotClearance = (payload: ClearancePayload): void => {
-    const currentPilot = this.pilot;
+    const currentPilot = this.selectedAircraft;
     if (!currentPilot || currentPilot.sid !== payload.pilot_sid) return;
 
     const { kind, instruction, coords, issued_at } = payload.clearance;
@@ -427,6 +425,6 @@ export class AirportMapService {
     };
 
     currentPilot.clearances[kind] = clearance;
-    this.pilot = currentPilot;
+    this.selectedAircraft = currentPilot;
   }
 }
