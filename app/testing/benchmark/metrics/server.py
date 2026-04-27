@@ -1,12 +1,9 @@
 from __future__ import annotations
-
 from dataclasses import dataclass, field
 from threading import Lock
 from time import perf_counter_ns
 from typing import Any
-
 from app.utils.socket_constants import ATC_ROOM
-
 
 def percentile(values: list[float], pct: float) -> float | None:
     if not values:
@@ -16,12 +13,10 @@ def percentile(values: list[float], pct: float) -> float | None:
     index = round((pct / 100.0) * (len(ordered) - 1))
     return ordered[index]
 
-
 def mean(values: list[float]) -> float | None:
     if not values:
         return None
     return sum(values) / len(values)
-
 
 @dataclass
 class LatencyRecorder:
@@ -42,7 +37,6 @@ class LatencyRecorder:
             "min_ms": min(values) if values else None,
             "max_ms": max(values) if values else None,
         }
-
 
 class SystemMetrics:
     """
