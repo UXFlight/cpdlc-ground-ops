@@ -28,7 +28,7 @@ def create_app():
     mimetypes.add_type('application/javascript', '.js')
     app = Flask(__name__, static_url_path="/static", static_folder="static")
     CORS(app)
-    async_mode = "eventlet" if eventlet else "threading"
+    async_mode = "eventlet" # if eventlet else "threading"
     socketio = SocketIO(
         app,
         cors_allowed_origins="*",
