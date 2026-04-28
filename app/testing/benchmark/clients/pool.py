@@ -79,7 +79,7 @@ class ClientPool:
                     server_url=config.server_url,
                     latency_tracker=latency_tracker,
                     message_id_factory=message_ids.new,
-                    can_respond=(i == 0),
+                    can_respond=False,
                 )
                 for i in range(config.atc)
             ]
@@ -97,12 +97,14 @@ class ClientPool:
             self._connect_clients(controllers)
             self._connect_clients(pilots)
 
-            self._wait_for_admission(
+            admission_state = self._wait_for_admission(
                 server_url=config.server_url,
                 expected_atc=config.atc,
                 expected_pilots=config.pilots,
                 timeout_s=self.connect_timeout_s,
             )
+
+            self._select_responder(controllers)
 
             self._run_message_phase(
                 pilots=[pilot for pilot in pilots if pilot.connected],
@@ -149,17 +151,38 @@ class ClientPool:
             )
             end_to_end = summarize_latency(latency_tracker.values())
 
+            observed_atc = int(state.get("atc_count") or 0)
+            observed_pilots = int(state.get("pilot_count") or 0)
+            total_errors = int(metrics.get("total_errors") or 0)
+
+            full_population_observed = (
+                observed_atc == config.atc
+                and observed_pilots == config.pilots
+            )
+
+            has_end_to_end_samples = end_to_end.count > 0
+            has_server_samples = server_processing.count > 0
+
+            capacity_row_valid = (
+                full_population_observed
+                and has_end_to_end_samples
+                and has_server_samples
+                and total_errors == 0
+                and len(validation_issues) == 0
+                and polling_issues == 0
+            )
+
             return MetricRow(
                 label=config.label or self._default_label(config),
                 test_id=config.test_id,
                 requested_atc=config.atc,
                 requested_pilots=config.pilots,
-                observed_atc=int(state.get("atc_count") or 0),
-                observed_pilots=int(state.get("pilot_count") or 0),
+                observed_atc=observed_atc,
+                observed_pilots=observed_pilots,
                 duration_s=config.duration_s,
                 interval_s=config.interval_s,
                 total_messages=int(metrics.get("total_messages") or 0),
-                total_errors=int(metrics.get("total_errors") or 0),
+                total_errors=total_errors,
                 validation_issues=len(validation_issues),
                 polling_issues=polling_issues,
                 end_to_end_latency=end_to_end,
@@ -174,11 +197,20 @@ class ClientPool:
                     "latency_duplicate_receives": latency_tracker.duplicate_receives,
                     "connected_controllers": sum(1 for controller in controllers if controller.connected),
                     "connected_pilots": sum(1 for pilot in pilots if pilot.connected),
+                    "responder_connected": any(
+                        controller.connected and controller.can_respond
+                        for controller in controllers
+                    ),
                     "pilot_completed_cycles_min": self._min_completed_cycles(pilots),
                     "pilot_completed_cycles_max": self._max_completed_cycles(pilots),
                     "pilot_history_length_min": int(history_lengths.get("min") or 0),
                     "pilot_history_length_max": int(history_lengths.get("max") or 0),
                     "pilot_history_length_mean": float(history_lengths.get("mean") or 0.0),
+                    "admission_state": admission_state,
+                    "full_population_observed": full_population_observed,
+                    "has_end_to_end_samples": has_end_to_end_samples,
+                    "has_server_samples": has_server_samples,
+                    "capacity_row_valid": capacity_row_valid,
                 },
             )
 
@@ -186,10 +218,13 @@ class ClientPool:
             self._disconnect_clients(pilots)
             self._disconnect_clients(controllers)
 
-            # Give Flask-SocketIO time to process disconnect events before the next R3 load point.
             time.sleep(1.0)
 
-            # Best-effort cleanup. The next run also calls /reset before starting.
+            try:
+                self._post_json(config.server_url, "/testing/benchmark/reset")
+            except Exception:
+                pass
+
             self._wait_until_clean(config.server_url, timeout_s=3.0)
 
     def _run_message_phase(
@@ -215,6 +250,21 @@ class ClientPool:
         if not clients:
             return
 
+        batch_size = min(self.max_connect_workers, len(clients))
+
+        for start in range(0, len(clients), batch_size):
+            batch = clients[start:start + batch_size]
+            self._connect_batch(batch)
+            time.sleep(0.25)
+
+        not_connected = [client for client in clients if not client.connected]
+        if not_connected:
+            for start in range(0, len(not_connected), batch_size):
+                batch = not_connected[start:start + batch_size]
+                self._connect_batch(batch)
+                time.sleep(0.25)
+
+    def _connect_batch(self, clients: list[Any]) -> None:
         workers = min(self.max_connect_workers, len(clients))
 
         with ThreadPoolExecutor(max_workers=workers) as executor:
@@ -228,6 +278,15 @@ class ClientPool:
                     future.result()
                 except Exception:
                     pass
+
+    def _select_responder(self, controllers: list[ControllerBenchmarkClient]) -> None:
+        for controller in controllers:
+            controller.can_respond = False
+
+        for controller in controllers:
+            if controller.connected:
+                controller.can_respond = True
+                return
 
     def _disconnect_clients(self, clients: list[Any]) -> None:
         for client in clients:
