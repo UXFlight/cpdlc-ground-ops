@@ -119,7 +119,9 @@ class ClientPool:
                 polling_issues += 1
                 state = {
                     "pilot_count": sum(1 for pilot in pilots if pilot.connected),
-                    "atc_count": sum(1 for controller in controllers if controller.connected),
+                    "atc_count": sum(
+                        1 for controller in controllers if controller.connected
+                    ),
                     "validation_issues": ["state_snapshot_unavailable"],
                     "history_lengths": {},
                 }
@@ -193,9 +195,12 @@ class ClientPool:
                     "client_error_examples": client_errors[:10],
                     "unexpected_pilot_event_count": len(unexpected_events),
                     "unexpected_pilot_event_examples": unexpected_events[:10],
+                    "pilot_stats": self._pilot_stats(pilots),
                     "latency_unmatched_receives": latency_tracker.unmatched_receives,
                     "latency_duplicate_receives": latency_tracker.duplicate_receives,
-                    "connected_controllers": sum(1 for controller in controllers if controller.connected),
+                    "connected_controllers": sum(
+                        1 for controller in controllers if controller.connected
+                    ),
                     "connected_pilots": sum(1 for pilot in pilots if pilot.connected),
                     "responder_connected": any(
                         controller.connected and controller.can_respond
@@ -205,7 +210,9 @@ class ClientPool:
                     "pilot_completed_cycles_max": self._max_completed_cycles(pilots),
                     "pilot_history_length_min": int(history_lengths.get("min") or 0),
                     "pilot_history_length_max": int(history_lengths.get("max") or 0),
-                    "pilot_history_length_mean": float(history_lengths.get("mean") or 0.0),
+                    "pilot_history_length_mean": float(
+                        history_lengths.get("mean") or 0.0
+                    ),
                     "admission_state": admission_state,
                     "full_population_observed": full_population_observed,
                     "has_end_to_end_samples": has_end_to_end_samples,
@@ -367,7 +374,22 @@ class ClientPool:
             return json.loads(response.read().decode("utf-8"))
 
     def _default_label(self, config: BenchmarkConfig) -> str:
-        return f"{config.atc} ATC, {config.pilots} pilots, {config.interval_s:g}s interval"
+        return (
+            f"{config.atc} ATC, {config.pilots} pilots, "
+            f"{config.interval_s:g}s interval"
+        )
+
+    def _pilot_stats(self, pilots: list[PilotBenchmarkClient]) -> list[dict[str, Any]]:
+        return [
+            {
+                "client_id": getattr(pilot, "client_id", "unknown"),
+                "connected": bool(getattr(pilot, "connected", False)),
+                "completed_cycles": int(getattr(pilot, "completed_cycles", 0)),
+                "unexpected_events": list(getattr(pilot, "unexpected_events", [])),
+                "errors": list(getattr(pilot, "errors", [])),
+            }
+            for pilot in pilots
+        ]
 
     def _min_completed_cycles(self, pilots: list[PilotBenchmarkClient]) -> int:
         if not pilots:

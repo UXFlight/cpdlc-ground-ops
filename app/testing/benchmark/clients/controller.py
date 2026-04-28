@@ -2,6 +2,7 @@ from __future__ import annotations
 import socketio
 from threading import Event
 from typing import Callable, Any
+from app.testing.benchmark.clients.logging import build_null_logger
 from app.testing.benchmark.metrics.latency import ClientLatencyTracker
 from app.utils.constants import AFFIRM
 from app.utils.socket_constants import (
@@ -34,7 +35,7 @@ class ControllerBenchmarkClient:
         self.sio = socketio.Client(
             reconnection=False,
             logger=False,
-            engineio_logger=False,
+            engineio_logger=build_null_logger(f"benchmark.engineio.controller.{client_id}"),
         )
 
         self._register_handlers()

@@ -44,9 +44,9 @@ R3_LOAD_POINTS = [
 ]
 
 R4_PRESETS = {
-    "1": {"atc": 350, "pilots": 550, "duration_s": 30.0, "interval_s": 0.1},
+    "1": {"atc": 350, "pilots": 550, "duration_s": 60.0, "interval_s": 1.0},
     "2": {"atc": 400, "pilots": 550, "duration_s": 60.0, "interval_s": 1.0},
-    "3": {"atc": 4000, "pilots": 5500, "duration_s": 120.0, "interval_s": 0.1},
+    "3": {"atc": 4000, "pilots": 5500, "duration_s": 60.0, "interval_s": 1.0},
 }
 
 TEST_FOLDER_NAMES = {
