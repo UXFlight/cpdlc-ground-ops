@@ -58,6 +58,35 @@ def _validate_state(pilots: list[Any], atc_list: list[Any]) -> list[str]:
     return issues
 
 
+def _clear_benchmark_state(pilot_manager, atc_manager) -> dict[str, int]:
+    pilots_before = len(pilot_manager.get_all_pilots())
+    atc_before = len(atc_manager.get_all_sids())
+
+    for pilot in list(pilot_manager.get_all_pilots()):
+        sid = getattr(pilot, "sid", None)
+        if sid:
+            try:
+                pilot_manager.remove(sid)
+            except Exception:
+                pass
+
+    for sid in list(atc_manager.get_all_sids()):
+        try:
+            atc_manager.remove(sid)
+        except Exception:
+            pass
+
+    pilots_after = len(pilot_manager.get_all_pilots())
+    atc_after = len(atc_manager.get_all_sids())
+
+    return {
+        "pilots_before": pilots_before,
+        "atc_before": atc_before,
+        "pilots_after": pilots_after,
+        "atc_after": atc_after,
+    }
+
+
 def register_benchmark_observability(
     app: Flask,
     pilot_manager,
@@ -66,8 +95,12 @@ def register_benchmark_observability(
 ) -> None:
     @app.post("/testing/benchmark/reset")
     def benchmark_reset():
+        state_reset = _clear_benchmark_state(pilot_manager, atc_manager)
         metrics_store.reset()
-        return jsonify({"ok": True})
+        return jsonify({
+            "ok": True,
+            "state_reset": state_reset,
+        })
 
     @app.get("/testing/benchmark/metrics")
     def benchmark_metrics():

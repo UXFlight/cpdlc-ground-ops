@@ -54,126 +54,143 @@ class ClientPool:
     def execute(self, config: BenchmarkConfig) -> MetricRow:
         latency_tracker = ClientLatencyTracker()
         message_ids = MessageIdFactory(config.test_id)
-
         polling_issues = 0
 
+        controllers: list[ControllerBenchmarkClient] = []
+        pilots: list[PilotBenchmarkClient] = []
         try:
-            self._post_json(config.server_url, "/testing/benchmark/reset")
-        except Exception:
-            polling_issues += 1
+            try:
+                self._post_json(config.server_url, "/testing/benchmark/reset")
+            except Exception:
+                polling_issues += 1
 
-        initial_state = self._safe_get_state(config.server_url)
-        if initial_state is None:
-            polling_issues += 1
-        elif initial_state.get("pilot_count", 0) != 0 or initial_state.get("atc_count", 0) != 0:
-            raise RuntimeError(
-                "Benchmark server is not clean. "
-                f"Observed {initial_state.get('atc_count', 0)} ATC and "
-                f"{initial_state.get('pilot_count', 0)} pilots before the run. "
-                "Restart the server or disconnect existing clients before testing."
-            )
+            clean = self._wait_until_clean(config.server_url, timeout_s=5.0)
+            if not clean:
+                state = self._safe_get_state(config.server_url) or {}
+                raise RuntimeError(
+                    "Benchmark server could not be reset to a clean state. "
+                    f"Observed {state.get('atc_count', 0)} ATC and "
+                    f"{state.get('pilot_count', 0)} pilots after reset."
+                )
 
-        controllers = [
-            ControllerBenchmarkClient(
-                client_id=f"controller-{i + 1}",
+            controllers = [
+                ControllerBenchmarkClient(
+                    client_id=f"controller-{i + 1}",
+                    server_url=config.server_url,
+                    latency_tracker=latency_tracker,
+                    message_id_factory=message_ids.new,
+                    can_respond=(i == 0),
+                )
+                for i in range(config.atc)
+            ]
+
+            pilots = [
+                PilotBenchmarkClient(
+                    client_id=f"pilot-{i + 1}",
+                    server_url=config.server_url,
+                    latency_tracker=latency_tracker,
+                    message_id_factory=message_ids.new,
+                )
+                for i in range(config.pilots)
+            ]
+
+            self._connect_clients(controllers)
+            self._connect_clients(pilots)
+
+            self._wait_for_admission(
                 server_url=config.server_url,
-                latency_tracker=latency_tracker,
-                message_id_factory=message_ids.new,
-                can_respond=(i == 0),
+                expected_atc=config.atc,
+                expected_pilots=config.pilots,
+                timeout_s=self.connect_timeout_s,
             )
-            for i in range(config.atc)
-        ]
 
-        pilots = [
-            PilotBenchmarkClient(
-                client_id=f"pilot-{i + 1}",
-                server_url=config.server_url,
-                latency_tracker=latency_tracker,
-                message_id_factory=message_ids.new,
+            self._run_message_phase(
+                pilots=[pilot for pilot in pilots if pilot.connected],
+                duration_s=config.duration_s,
+                interval_s=config.interval_s,
             )
-            for i in range(config.pilots)
-        ]
 
-        self._connect_clients(controllers)
-        self._connect_clients(pilots)
+            time.sleep(min(self.teardown_grace_s, 2.0))
 
-        self._wait_for_admission(
-            server_url=config.server_url,
-            expected_atc=config.atc,
-            expected_pilots=config.pilots,
-            timeout_s=self.connect_timeout_s,
-        )
+            state = self._safe_get_state(config.server_url)
+            if state is None:
+                polling_issues += 1
+                state = {
+                    "pilot_count": sum(1 for pilot in pilots if pilot.connected),
+                    "atc_count": sum(1 for controller in controllers if controller.connected),
+                    "validation_issues": ["state_snapshot_unavailable"],
+                    "history_lengths": {},
+                }
 
-        self._run_message_phase(
-            pilots=[pilot for pilot in pilots if pilot.connected],
-            duration_s=config.duration_s,
-            interval_s=config.interval_s,
-        )
+            metrics = self._safe_get_metrics(config.server_url)
+            if metrics is None:
+                polling_issues += 1
+                metrics = {
+                    "total_messages": 0,
+                    "total_errors": 0,
+                    "server_processing_ms": {},
+                }
 
-        time.sleep(min(self.teardown_grace_s, 2.0))
+            client_errors: list[Any] = []
+            for controller in controllers:
+                client_errors.extend(controller.errors)
+            for pilot in pilots:
+                client_errors.extend(pilot.errors)
 
-        state = self._safe_get_state(config.server_url)
-        if state is None:
-            polling_issues += 1
-            state = {
-                "pilot_count": sum(1 for pilot in pilots if pilot.connected),
-                "atc_count": sum(1 for controller in controllers if controller.connected),
-                "validation_issues": ["state_snapshot_unavailable"],
-            }
+            unexpected_events: list[Any] = []
+            for pilot in pilots:
+                unexpected_events.extend(getattr(pilot, "unexpected_events", []))
 
-        metrics = self._safe_get_metrics(config.server_url)
-        if metrics is None:
-            polling_issues += 1
-            metrics = {
-                "total_messages": 0,
-                "total_errors": 0,
-                "server_processing_ms": {},
-            }
+            validation_issues = list(state.get("validation_issues", []) or [])
+            history_lengths = state.get("history_lengths", {}) or {}
 
-        self._disconnect_clients(pilots)
-        self._disconnect_clients(controllers)
+            server_processing = _stats_from_server_snapshot(
+                metrics.get("server_processing_ms", {}) or {}
+            )
+            end_to_end = summarize_latency(latency_tracker.values())
 
-        client_errors = []
-        for controller in controllers:
-            client_errors.extend(controller.errors)
-        for pilot in pilots:
-            client_errors.extend(pilot.errors)
+            return MetricRow(
+                label=config.label or self._default_label(config),
+                test_id=config.test_id,
+                requested_atc=config.atc,
+                requested_pilots=config.pilots,
+                observed_atc=int(state.get("atc_count") or 0),
+                observed_pilots=int(state.get("pilot_count") or 0),
+                duration_s=config.duration_s,
+                interval_s=config.interval_s,
+                total_messages=int(metrics.get("total_messages") or 0),
+                total_errors=int(metrics.get("total_errors") or 0),
+                validation_issues=len(validation_issues),
+                polling_issues=polling_issues,
+                end_to_end_latency=end_to_end,
+                server_processing_latency=server_processing,
+                details={
+                    "state_validation_issues": validation_issues,
+                    "client_error_count": len(client_errors),
+                    "client_error_examples": client_errors[:10],
+                    "unexpected_pilot_event_count": len(unexpected_events),
+                    "unexpected_pilot_event_examples": unexpected_events[:10],
+                    "latency_unmatched_receives": latency_tracker.unmatched_receives,
+                    "latency_duplicate_receives": latency_tracker.duplicate_receives,
+                    "connected_controllers": sum(1 for controller in controllers if controller.connected),
+                    "connected_pilots": sum(1 for pilot in pilots if pilot.connected),
+                    "pilot_completed_cycles_min": self._min_completed_cycles(pilots),
+                    "pilot_completed_cycles_max": self._max_completed_cycles(pilots),
+                    "pilot_history_length_min": int(history_lengths.get("min") or 0),
+                    "pilot_history_length_max": int(history_lengths.get("max") or 0),
+                    "pilot_history_length_mean": float(history_lengths.get("mean") or 0.0),
+                },
+            )
 
-        validation_issues = list(state.get("validation_issues", []) or [])
+        finally:
+            self._disconnect_clients(pilots)
+            self._disconnect_clients(controllers)
 
-        server_processing = _stats_from_server_snapshot(
-            metrics.get("server_processing_ms", {}) or {}
-        )
+            # Give Flask-SocketIO time to process disconnect events before the next R3 load point.
+            time.sleep(1.0)
 
-        end_to_end = summarize_latency(latency_tracker.values())
-
-        return MetricRow(
-            label=config.label or self._default_label(config),
-            test_id=config.test_id,
-            requested_atc=config.atc,
-            requested_pilots=config.pilots,
-            observed_atc=int(state.get("atc_count") or 0),
-            observed_pilots=int(state.get("pilot_count") or 0),
-            duration_s=config.duration_s,
-            interval_s=config.interval_s,
-            total_messages=int(metrics.get("total_messages") or 0),
-            total_errors=int(metrics.get("total_errors") or 0),
-            validation_issues=len(validation_issues),
-            polling_issues=polling_issues,
-            end_to_end_latency=end_to_end,
-            server_processing_latency=server_processing,
-            details={
-                "state_validation_issues": validation_issues,
-                "client_error_count": len(client_errors),
-                "client_error_examples": client_errors[:10],
-                "latency_unmatched_receives": latency_tracker.unmatched_receives,
-                "latency_duplicate_receives": latency_tracker.duplicate_receives,
-                "connected_controllers": sum(1 for controller in controllers if controller.connected),
-                "connected_pilots": sum(1 for pilot in pilots if pilot.connected),
-                "pilot_completed_cycles_min": self._min_completed_cycles(pilots),
-                "pilot_completed_cycles_max": self._max_completed_cycles(pilots),
-            },
-        )
+            # Best-effort cleanup. The next run also calls /reset before starting.
+            self._wait_until_clean(config.server_url, timeout_s=3.0)
 
     def _run_message_phase(
         self,
@@ -214,7 +231,27 @@ class ClientPool:
 
     def _disconnect_clients(self, clients: list[Any]) -> None:
         for client in clients:
-            client.disconnect()
+            try:
+                client.disconnect()
+            except Exception:
+                pass
+
+    def _wait_until_clean(self, server_url: str, timeout_s: float) -> bool:
+        deadline = time.monotonic() + timeout_s
+
+        while time.monotonic() < deadline:
+            state = self._safe_get_state(server_url)
+
+            if state is not None:
+                atc_count = int(state.get("atc_count") or 0)
+                pilot_count = int(state.get("pilot_count") or 0)
+
+                if atc_count == 0 and pilot_count == 0:
+                    return True
+
+            time.sleep(0.25)
+
+        return False
 
     def _wait_for_admission(
         self,
