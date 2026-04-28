@@ -1,14 +1,22 @@
 from __future__ import annotations
 from typing import Any
 from app.testing.benchmark.models import CheckResult, MetricRow
+from app.utils.constants import DEFAULT_STEPS
+
+EXPECTED_STEP_COUNT = len(DEFAULT_STEPS)
 
 class StateConsistencyChecks:
     def run(self, row: MetricRow) -> list[CheckResult]:
         return [
             self.population_integrity(row),
-            self.no_errors_or_issues(row),
+            self.no_server_errors(row),
+            self.no_validation_issues(row),
+            self.no_polling_issues(row),
+            self.no_client_errors(row),
+            self.no_unmatched_latency_events(row),
             self.per_pilot_isolation(row),
-            self.per_pilot_progress(row),
+            self.progress_guarantee(row),
+            self.bounded_state_growth(row),
             self.latency_samples_observed(row),
         ]
 
@@ -25,35 +33,51 @@ class StateConsistencyChecks:
 
         return CheckResult("population_integrity", passed, details)
 
-    def no_errors_or_issues(self, row: MetricRow) -> CheckResult:
-        client_error_count = int(row.details.get("client_error_count", 0))
-        unexpected_pilot_event_count = int(
-            row.details.get("unexpected_pilot_event_count", 0)
+    def no_server_errors(self, row: MetricRow) -> CheckResult:
+        return CheckResult(
+            "no_server_errors",
+            row.total_errors == 0,
+            f"total_errors={row.total_errors}",
         )
-        unmatched_receives = int(row.details.get("latency_unmatched_receives", 0))
-        duplicate_receives = int(row.details.get("latency_duplicate_receives", 0))
 
-        passed = (
-            row.total_errors == 0
-            and row.validation_issues == 0
-            and row.polling_issues == 0
-            and client_error_count == 0
-            and unexpected_pilot_event_count == 0
-            and unmatched_receives == 0
-            and duplicate_receives == 0
+    def no_validation_issues(self, row: MetricRow) -> CheckResult:
+        issues = row.details.get("state_validation_issues", [])
+
+        return CheckResult(
+            "no_validation_issues",
+            row.validation_issues == 0,
+            f"validation_issues={row.validation_issues}; details={issues}",
         )
+
+    def no_polling_issues(self, row: MetricRow) -> CheckResult:
+        return CheckResult(
+            "no_polling_issues",
+            row.polling_issues == 0,
+            f"polling_issues={row.polling_issues}",
+        )
+
+    def no_client_errors(self, row: MetricRow) -> CheckResult:
+        count = int(row.details.get("client_error_count", 0))
+        examples = row.details.get("client_error_examples", [])
+
+        return CheckResult(
+            "no_client_errors",
+            count == 0,
+            f"client_error_count={count}; examples={examples}",
+        )
+
+    def no_unmatched_latency_events(self, row: MetricRow) -> CheckResult:
+        unmatched = int(row.details.get("latency_unmatched_receives", 0))
+        duplicates = int(row.details.get("latency_duplicate_receives", 0))
+
+        passed = unmatched == 0 and duplicates == 0
 
         details = (
-            f"total_errors={row.total_errors}; "
-            f"validation_issues={row.validation_issues}; "
-            f"polling_issues={row.polling_issues}; "
-            f"client_error_count={client_error_count}; "
-            f"unexpected_pilot_event_count={unexpected_pilot_event_count}; "
-            f"latency_unmatched_receives={unmatched_receives}; "
-            f"latency_duplicate_receives={duplicate_receives}"
+            f"latency_unmatched_receives={unmatched}; "
+            f"latency_duplicate_receives={duplicates}"
         )
 
-        return CheckResult("no_errors_or_issues", passed, details)
+        return CheckResult("no_unmatched_latency_events", passed, details)
 
     def per_pilot_isolation(self, row: MetricRow) -> CheckResult:
         pilots = self._pilot_stats(row)
@@ -83,12 +107,12 @@ class StateConsistencyChecks:
 
         return CheckResult("per_pilot_isolation", passed, details)
 
-    def per_pilot_progress(self, row: MetricRow) -> CheckResult:
+    def progress_guarantee(self, row: MetricRow) -> CheckResult:
         pilots = self._pilot_stats(row)
 
         if not pilots:
             return CheckResult(
-                "per_pilot_progress",
+                "progress_guarantee",
                 False,
                 "missing pilot_stats; cannot verify per-pilot progress",
             )
@@ -122,7 +146,26 @@ class StateConsistencyChecks:
             f"failed={failed}"
         )
 
-        return CheckResult("per_pilot_progress", passed, details)
+        return CheckResult("progress_guarantee", passed, details)
+
+    def bounded_state_growth(self, row: MetricRow) -> CheckResult:
+        step_min = int(row.details.get("pilot_step_count_min", 0))
+        step_max = int(row.details.get("pilot_step_count_max", 0))
+        step_mean = float(row.details.get("pilot_step_count_mean", 0.0))
+
+        passed = (
+            step_min == EXPECTED_STEP_COUNT
+            and step_max == EXPECTED_STEP_COUNT
+        )
+
+        details = (
+            f"expected_step_count={EXPECTED_STEP_COUNT}; "
+            f"step_count_min={step_min}; "
+            f"step_count_max={step_max}; "
+            f"step_count_mean={step_mean:.2f}"
+        )
+
+        return CheckResult("bounded_state_growth", passed, details)
 
     def latency_samples_observed(self, row: MetricRow) -> CheckResult:
         passed = (

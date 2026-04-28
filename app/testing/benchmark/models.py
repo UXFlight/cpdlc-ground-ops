@@ -1,8 +1,7 @@
 from __future__ import annotations
-
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 TestId = Literal["R1", "R2", "R3", "R4"]
 
@@ -49,7 +48,7 @@ class MetricRow:
     end_to_end_latency: LatencyStats
     server_processing_latency: LatencyStats
 
-    details: dict = field(default_factory=dict)
+    details: dict[str, Any] = field(default_factory=dict)
 
     @property
     def requested_total(self) -> int:

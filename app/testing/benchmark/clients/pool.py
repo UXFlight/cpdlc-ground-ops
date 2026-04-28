@@ -124,6 +124,7 @@ class ClientPool:
                     ),
                     "validation_issues": ["state_snapshot_unavailable"],
                     "history_lengths": {},
+                    "step_counts": {},
                 }
 
             metrics = self._safe_get_metrics(config.server_url)
@@ -147,11 +148,13 @@ class ClientPool:
 
             validation_issues = list(state.get("validation_issues", []) or [])
             history_lengths = state.get("history_lengths", {}) or {}
+            step_counts = state.get("step_counts", {}) or {}
+            pilot_stats = self._pilot_stats(pilots)
 
             server_processing = _stats_from_server_snapshot(
                 metrics.get("server_processing_ms", {}) or {}
             )
-            end_to_end = summarize_latency(latency_tracker.values())
+            end_to_end = summarize_latency(self._latency_values(latency_tracker))
 
             observed_atc = int(state.get("atc_count") or 0)
             observed_pilots = int(state.get("pilot_count") or 0)
@@ -195,13 +198,14 @@ class ClientPool:
                     "client_error_examples": client_errors[:10],
                     "unexpected_pilot_event_count": len(unexpected_events),
                     "unexpected_pilot_event_examples": unexpected_events[:10],
-                    "pilot_stats": self._pilot_stats(pilots),
                     "latency_unmatched_receives": latency_tracker.unmatched_receives,
                     "latency_duplicate_receives": latency_tracker.duplicate_receives,
                     "connected_controllers": sum(
                         1 for controller in controllers if controller.connected
                     ),
-                    "connected_pilots": sum(1 for pilot in pilots if pilot.connected),
+                    "connected_pilots": sum(
+                        1 for pilot in pilots if pilot.connected
+                    ),
                     "responder_connected": any(
                         controller.connected and controller.can_respond
                         for controller in controllers
@@ -213,6 +217,10 @@ class ClientPool:
                     "pilot_history_length_mean": float(
                         history_lengths.get("mean") or 0.0
                     ),
+                    "pilot_step_count_min": int(step_counts.get("min") or 0),
+                    "pilot_step_count_max": int(step_counts.get("max") or 0),
+                    "pilot_step_count_mean": float(step_counts.get("mean") or 0.0),
+                    "pilot_stats": pilot_stats,
                     "admission_state": admission_state,
                     "full_population_observed": full_population_observed,
                     "has_end_to_end_samples": has_end_to_end_samples,
@@ -222,9 +230,13 @@ class ClientPool:
             )
 
         finally:
-            self._disconnect_clients(pilots)
-            self._disconnect_clients(controllers)
+            self._disable_responders(controllers)
+            time.sleep(0.5)
 
+            self._disconnect_clients(controllers)
+            time.sleep(0.5)
+
+            self._disconnect_clients(pilots)
             time.sleep(1.0)
 
             try:
@@ -294,6 +306,16 @@ class ClientPool:
             if controller.connected:
                 controller.can_respond = True
                 return
+
+    def _disable_responders(
+        self,
+        controllers: list[ControllerBenchmarkClient],
+    ) -> None:
+        for controller in controllers:
+            try:
+                controller.can_respond = False
+            except Exception:
+                pass
 
     def _disconnect_clients(self, clients: list[Any]) -> None:
         for client in clients:
@@ -385,11 +407,21 @@ class ClientPool:
                 "client_id": getattr(pilot, "client_id", "unknown"),
                 "connected": bool(getattr(pilot, "connected", False)),
                 "completed_cycles": int(getattr(pilot, "completed_cycles", 0)),
-                "unexpected_events": list(getattr(pilot, "unexpected_events", [])),
-                "errors": list(getattr(pilot, "errors", [])),
+                "unexpected_events": list(
+                    getattr(pilot, "unexpected_events", []) or []
+                ),
+                "errors": list(getattr(pilot, "errors", []) or []),
             }
             for pilot in pilots
         ]
+
+    def _latency_values(self, latency_tracker: ClientLatencyTracker) -> list[float]:
+        values_method = getattr(latency_tracker, "values", None)
+
+        if callable(values_method):
+            return list(values_method())
+
+        return list(getattr(latency_tracker, "completed_ms", []))
 
     def _min_completed_cycles(self, pilots: list[PilotBenchmarkClient]) -> int:
         if not pilots:

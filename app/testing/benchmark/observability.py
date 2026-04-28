@@ -20,6 +20,28 @@ def _history_lengths(pilots: list[Any]) -> dict[str, float | int]:
     }
 
 
+def _step_counts(pilots: list[Any]) -> dict[str, float | int]:
+    counts: list[int] = []
+
+    for pilot in pilots:
+        steps = getattr(pilot, "steps", {})
+        if isinstance(steps, dict):
+            counts.append(len(steps))
+
+    if not counts:
+        return {
+            "min": 0,
+            "max": 0,
+            "mean": 0.0,
+        }
+
+    return {
+        "min": min(counts),
+        "max": max(counts),
+        "mean": sum(counts) / len(counts),
+    }
+
+
 def _validate_state(pilots: list[Any], atc_list: list[Any]) -> list[str]:
     issues: list[str] = []
 
@@ -27,7 +49,7 @@ def _validate_state(pilots: list[Any], atc_list: list[Any]) -> list[str]:
     if len(pilot_sids) != len(set(pilot_sids)):
         issues.append("duplicate_pilot_sid")
 
-    atc_sids = []
+    atc_sids: list[str | None] = []
     for atc in atc_list:
         if isinstance(atc, dict):
             atc_sids.append(atc.get("sid"))
@@ -117,5 +139,6 @@ def register_benchmark_observability(
             "pilot_count": len(pilots),
             "atc_count": len(atc_list),
             "history_lengths": _history_lengths(pilots),
+            "step_counts": _step_counts(pilots),
             "validation_issues": validation_issues,
         })
