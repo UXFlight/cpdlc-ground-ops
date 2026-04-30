@@ -70,11 +70,13 @@ class StateConsistencyChecks:
         unmatched = int(row.details.get("latency_unmatched_receives", 0))
         duplicates = int(row.details.get("latency_duplicate_receives", 0))
 
-        passed = unmatched == 0 and duplicates == 0
+        passed = unmatched == 0
 
         details = (
             f"latency_unmatched_receives={unmatched}; "
-            f"latency_duplicate_receives={duplicates}"
+            f"latency_duplicate_receives={duplicates}; "
+            "duplicate receives are reported but not treated as a failure because "
+            "ATC-room broadcasts are intentionally received by multiple ATC clients"
         )
 
         return CheckResult("no_unmatched_latency_events", passed, details)

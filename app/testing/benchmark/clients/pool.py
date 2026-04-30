@@ -2,7 +2,7 @@ from __future__ import annotations
 import json
 import time
 import urllib.request
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, wait
 from threading import Lock
 from typing import Any
 from app.testing.benchmark.clients.controller import ControllerBenchmarkClient
@@ -55,9 +55,13 @@ class ClientPool:
         latency_tracker = ClientLatencyTracker()
         message_ids = MessageIdFactory(config.test_id)
         polling_issues = 0
-
         controllers: list[ControllerBenchmarkClient] = []
         pilots: list[PilotBenchmarkClient] = []
+        connected_pilots: list[PilotBenchmarkClient] = []
+        has_responder = False
+        message_phase_started = False
+        admission_state: dict[str, Any] = {}
+
         try:
             try:
                 self._post_json(config.server_url, "/testing/benchmark/reset")
@@ -94,23 +98,32 @@ class ClientPool:
                 for i in range(config.pilots)
             ]
 
-            self._connect_clients(controllers)
-            self._connect_clients(pilots)
+            admission_timeout_s = self._admission_timeout_s(config)
 
-            admission_state = self._wait_for_admission(
+            admission_state = self._connect_and_wait_for_admission(
+                controllers=controllers,
+                pilots=pilots,
                 server_url=config.server_url,
                 expected_atc=config.atc,
                 expected_pilots=config.pilots,
-                timeout_s=self.connect_timeout_s,
+                timeout_s=admission_timeout_s,
             )
 
             self._select_responder(controllers)
 
-            self._run_message_phase(
-                pilots=[pilot for pilot in pilots if pilot.connected],
-                duration_s=config.duration_s,
-                interval_s=config.interval_s,
+            connected_pilots = [pilot for pilot in pilots if pilot.connected]
+            has_responder = any(
+                controller.connected and controller.can_respond
+                for controller in controllers
             )
+
+            if connected_pilots and has_responder:
+                message_phase_started = True
+                self._run_message_phase(
+                    pilots=connected_pilots,
+                    duration_s=config.duration_s,
+                    interval_s=config.interval_s,
+                )
 
             time.sleep(min(self.teardown_grace_s, 2.0))
 
@@ -158,6 +171,8 @@ class ClientPool:
 
             observed_atc = int(state.get("atc_count") or 0)
             observed_pilots = int(state.get("pilot_count") or 0)
+            observed_total_clients = observed_atc + observed_pilots
+            requested_total_clients = config.atc + config.pilots
             total_errors = int(metrics.get("total_errors") or 0)
 
             full_population_observed = (
@@ -175,6 +190,12 @@ class ClientPool:
                 and total_errors == 0
                 and len(validation_issues) == 0
                 and polling_issues == 0
+            )
+
+            admission_ratio = (
+                observed_total_clients / requested_total_clients
+                if requested_total_clients > 0
+                else 0.0
             )
 
             return MetricRow(
@@ -206,10 +227,8 @@ class ClientPool:
                     "connected_pilots": sum(
                         1 for pilot in pilots if pilot.connected
                     ),
-                    "responder_connected": any(
-                        controller.connected and controller.can_respond
-                        for controller in controllers
-                    ),
+                    "responder_connected": has_responder,
+                    "message_phase_started": message_phase_started,
                     "pilot_completed_cycles_min": self._min_completed_cycles(pilots),
                     "pilot_completed_cycles_max": self._max_completed_cycles(pilots),
                     "pilot_history_length_min": int(history_lengths.get("min") or 0),
@@ -222,6 +241,11 @@ class ClientPool:
                     "pilot_step_count_mean": float(step_counts.get("mean") or 0.0),
                     "pilot_stats": pilot_stats,
                     "admission_state": admission_state,
+                    "admission_complete": full_population_observed,
+                    "requested_total_clients": requested_total_clients,
+                    "observed_total_clients": observed_total_clients,
+                    "admission_ratio": admission_ratio,
+                    "drop_ratio": 1.0 - admission_ratio,
                     "full_population_observed": full_population_observed,
                     "has_end_to_end_samples": has_end_to_end_samples,
                     "has_server_samples": has_server_samples,
@@ -231,13 +255,10 @@ class ClientPool:
 
         finally:
             self._disable_responders(controllers)
-            time.sleep(0.5)
+            time.sleep(0.25)
 
-            self._disconnect_clients(controllers)
-            time.sleep(0.5)
-
-            self._disconnect_clients(pilots)
-            time.sleep(1.0)
+            self._disconnect_clients([*controllers, *pilots])
+            time.sleep(min(self.teardown_grace_s, 1.0))
 
             try:
                 self._post_json(config.server_url, "/testing/benchmark/reset")
@@ -245,6 +266,9 @@ class ClientPool:
                 pass
 
             self._wait_until_clean(config.server_url, timeout_s=3.0)
+
+    def _admission_timeout_s(self, config: BenchmarkConfig) -> float:
+        return max(self.connect_timeout_s, min(config.duration_s, 60.0))
 
     def _run_message_phase(
         self,
@@ -265,38 +289,124 @@ class ClientPool:
 
             time.sleep(min(interval_s, remaining))
 
-    def _connect_clients(self, clients: list[Any]) -> None:
+    def _connect_and_wait_for_admission(
+        self,
+        controllers: list[ControllerBenchmarkClient],
+        pilots: list[PilotBenchmarkClient],
+        server_url: str,
+        expected_atc: int,
+        expected_pilots: int,
+        timeout_s: float,
+    ) -> dict[str, Any]:
+        started_at = time.monotonic()
+        deadline = started_at + timeout_s
+
+        clients = self._interleave_clients(controllers, pilots)
+        pending = list(clients)
+
+        attempted_clients = 0
+        last_state: dict[str, Any] = {}
+        admission_complete = False
+
+        while pending and time.monotonic() < deadline:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                break
+
+            batch_size = min(self.max_connect_workers, len(pending))
+            batch = pending[:batch_size]
+            pending = pending[batch_size:]
+            attempted_clients += len(batch)
+
+            self._connect_batch_bounded(
+                clients=batch,
+                timeout_s=min(remaining, self.connect_timeout_s),
+            )
+
+            state = self._safe_get_state(server_url)
+            if state is not None:
+                last_state = state
+
+                observed_atc = int(state.get("atc_count") or 0)
+                observed_pilots = int(state.get("pilot_count") or 0)
+
+                if observed_atc >= expected_atc and observed_pilots >= expected_pilots:
+                    admission_complete = True
+                    break
+
+            time.sleep(0.05)
+
+        final_state = self._safe_get_state(server_url)
+        if final_state is not None:
+            last_state = final_state
+
+        observed_atc = int(last_state.get("atc_count") or 0)
+        observed_pilots = int(last_state.get("pilot_count") or 0)
+
+        elapsed_s = time.monotonic() - started_at
+        requested_total = expected_atc + expected_pilots
+        observed_total = observed_atc + observed_pilots
+
+        return {
+            "admission_complete": admission_complete,
+            "admission_timeout_s": timeout_s,
+            "admission_elapsed_s": elapsed_s,
+            "attempted_clients": attempted_clients,
+            "pending_clients": len(pending),
+            "requested_atc": expected_atc,
+            "requested_pilots": expected_pilots,
+            "requested_total_clients": requested_total,
+            "observed_atc_at_admission": observed_atc,
+            "observed_pilots_at_admission": observed_pilots,
+            "observed_total_clients_at_admission": observed_total,
+            "admission_ratio_at_admission": (
+                observed_total / requested_total if requested_total > 0 else 0.0
+            ),
+            "state": last_state,
+        }
+
+    def _interleave_clients(
+        self,
+        controllers: list[ControllerBenchmarkClient],
+        pilots: list[PilotBenchmarkClient],
+    ) -> list[Any]:
+        clients: list[Any] = []
+        max_len = max(len(controllers), len(pilots))
+
+        for index in range(max_len):
+            if index < len(controllers):
+                clients.append(controllers[index])
+            if index < len(pilots):
+                clients.append(pilots[index])
+
+        return clients
+
+    def _connect_batch_bounded(self, clients: list[Any], timeout_s: float) -> None:
         if not clients:
             return
 
-        batch_size = min(self.max_connect_workers, len(clients))
-
-        for start in range(0, len(clients), batch_size):
-            batch = clients[start:start + batch_size]
-            self._connect_batch(batch)
-            time.sleep(0.25)
-
-        not_connected = [client for client in clients if not client.connected]
-        if not_connected:
-            for start in range(0, len(not_connected), batch_size):
-                batch = not_connected[start:start + batch_size]
-                self._connect_batch(batch)
-                time.sleep(0.25)
-
-    def _connect_batch(self, clients: list[Any]) -> None:
         workers = min(self.max_connect_workers, len(clients))
+        executor = ThreadPoolExecutor(max_workers=workers)
 
-        with ThreadPoolExecutor(max_workers=workers) as executor:
+        try:
             futures = [
                 executor.submit(client.connect, self.connect_timeout_s)
                 for client in clients
             ]
 
-            for future in as_completed(futures):
+            done, not_done = wait(futures, timeout=timeout_s)
+
+            for future in done:
                 try:
                     future.result()
                 except Exception:
                     pass
+
+            for future in not_done:
+                future.cancel()
+
+        finally:
+            executor.shutdown(wait=False, cancel_futures=True)
 
     def _select_responder(self, controllers: list[ControllerBenchmarkClient]) -> None:
         for controller in controllers:
@@ -318,11 +428,40 @@ class ClientPool:
                 pass
 
     def _disconnect_clients(self, clients: list[Any]) -> None:
-        for client in clients:
-            try:
-                client.disconnect()
-            except Exception:
-                pass
+        if not clients:
+            return
+
+        workers = min(self.max_connect_workers, len(clients))
+        executor = ThreadPoolExecutor(max_workers=workers)
+
+        try:
+            futures = [
+                executor.submit(self._safe_disconnect_client, client)
+                for client in clients
+            ]
+
+            done, not_done = wait(
+                futures,
+                timeout=min(self.teardown_grace_s, 3.0),
+            )
+
+            for future in done:
+                try:
+                    future.result()
+                except Exception:
+                    pass
+
+            for future in not_done:
+                future.cancel()
+
+        finally:
+            executor.shutdown(wait=False, cancel_futures=True)
+
+    def _safe_disconnect_client(self, client: Any) -> None:
+        try:
+            client.disconnect()
+        except Exception:
+            pass
 
     def _wait_until_clean(self, server_url: str, timeout_s: float) -> bool:
         deadline = time.monotonic() + timeout_s
@@ -341,31 +480,6 @@ class ClientPool:
 
         return False
 
-    def _wait_for_admission(
-        self,
-        server_url: str,
-        expected_atc: int,
-        expected_pilots: int,
-        timeout_s: float,
-    ) -> dict:
-        deadline = time.monotonic() + timeout_s
-        last_state: dict = {}
-
-        while time.monotonic() < deadline:
-            state = self._safe_get_state(server_url)
-            if state is not None:
-                last_state = state
-
-                if (
-                    int(state.get("atc_count") or 0) >= expected_atc
-                    and int(state.get("pilot_count") or 0) >= expected_pilots
-                ):
-                    return state
-
-            time.sleep(self.poll_interval_s)
-
-        return last_state
-
     def _safe_get_state(self, server_url: str) -> dict | None:
         try:
             return self._get_json(server_url, "/testing/benchmark/state")
@@ -380,7 +494,7 @@ class ClientPool:
 
     def _get_json(self, server_url: str, path: str) -> dict:
         url = f"{server_url.rstrip('/')}{path}"
-        with urllib.request.urlopen(url, timeout=5.0) as response:
+        with urllib.request.urlopen(url, timeout=2.0) as response:
             return json.loads(response.read().decode("utf-8"))
 
     def _post_json(self, server_url: str, path: str) -> dict:
@@ -392,7 +506,7 @@ class ClientPool:
             method="POST",
         )
 
-        with urllib.request.urlopen(request, timeout=5.0) as response:
+        with urllib.request.urlopen(request, timeout=2.0) as response:
             return json.loads(response.read().decode("utf-8"))
 
     def _default_label(self, config: BenchmarkConfig) -> str:

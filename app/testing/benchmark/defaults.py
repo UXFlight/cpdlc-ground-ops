@@ -10,7 +10,7 @@ DEFAULT_PILOT_CLIENTS = 20
 CONNECT_TIMEOUT_S = 15.0
 TEARDOWN_GRACE_S = 2.0
 POLL_INTERVAL_S = 1.0
-MAX_CONNECT_WORKERS = 25
+MAX_CONNECT_WORKERS = 100
 CONNECT_RETRIES = 2
 CONNECT_BATCH_PAUSE_S = 0.25
 
@@ -45,7 +45,7 @@ R3_LOAD_POINTS = [
 
 R4_PRESETS = {
     "1": {"atc": 350, "pilots": 550, "duration_s": 60.0, "interval_s": 1.0},
-    "2": {"atc": 400, "pilots": 550, "duration_s": 60.0, "interval_s": 1.0},
+    "2": {"atc": 700, "pilots": 1100, "duration_s": 60.0, "interval_s": 1.0},
     "3": {"atc": 4000, "pilots": 5500, "duration_s": 60.0, "interval_s": 1.0},
 }
 

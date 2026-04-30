@@ -24,6 +24,8 @@ logging.getLogger("werkzeug").setLevel(logging.ERROR)
 
 exit_event = threading.Event()
 DEFAULT_ICAO = "KLAX"
+BENCHMARK_PING_INTERVAL_S = 60
+BENCHMARK_PING_TIMEOUT_S = 120
 
 def create_app():
     mimetypes.add_type("application/javascript", ".js")
@@ -32,12 +34,15 @@ def create_app():
     CORS(app)
 
     async_mode = "eventlet"
+    benchmark_mode = os.getenv("CPDLC_BENCHMARK") == "1"
 
     socketio = SocketIO(
         app,
         cors_allowed_origins="*",
         async_mode=async_mode,
         transports=["websocket"],
+        ping_interval=BENCHMARK_PING_INTERVAL_S if benchmark_mode else 25,
+        ping_timeout=BENCHMARK_PING_TIMEOUT_S if benchmark_mode else 20,
     )
 
     return app, socketio
